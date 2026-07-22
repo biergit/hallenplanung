@@ -153,6 +153,59 @@ function createSetupSheet(ss, sep) {
   sheet.setColumnWidth(7, 150);
 
   sheet.hideColumns(7);
+
+  // Bedienungsanleitung in Spalten J-L
+  sheet.getRange('J1').setValue('📋 BEDIENUNGSANLEITUNG');
+  sheet.getRange('J1').setFontWeight('bold');
+  sheet.getRange('J1').setFontSize(12);
+  sheet.setColumnWidth(10, 500);
+
+  var instructions = [
+    ['SPIELDAUER ÄNDERN:', 'Wert in Zelle F1 ändern (z.B. 4.5 für 4h 30min).'],
+    ['', 'Gilt nur für neue Einträge – bestehende Endzeiten bleiben unverändert.'],
+    ['', ''],
+    ['STARTZEIT EINGEBEN:', 'Einfach "12" statt "12:00" eingeben – das Script wandelt es um.'],
+    ['', '"12.5" = 12:30, "14.25" = 14:15, usw.'],
+    ['', ''],
+    ['TEAMS:', 'Rang und Gruppe in Spalten A+B eintragen.'],
+    ['', 'Teamname und Kurzname werden automatisch generiert.'],
+    ['', 'Neue Gruppen: in Spalte G ergänzen (ausgeblendet).'],
+    ['', ''],
+    ['EINGABE:', 'Mannschaftsführer tragen Heim-/Auswärtsspiele ein.'],
+    ['', 'Heimspiel: Bereich auswählen (Pflicht).'],
+    ['', 'Auswärtsspiel: Bereich frei lassen.'],
+    ['', 'Fehler und Warnungen erscheinen in der Status-Spalte.'],
+    ['', ''],
+    ['SPERRUNGEN:', 'Gesperrte Tage/Bereiche/Zeiträume eintragen.'],
+    ['', 'Ohne Start-/Endzeit: ganztägig gesperrt.'],
+    ['', 'Mit Start-/Endzeit: nur dieser Zeitraum gesperrt.'],
+    ['', ''],
+    ['BELEGUNGSPLAN:', 'Kalenderansicht für die Web-Veröffentlichung.'],
+    ['', 'Checkbox A1: Nur Hallenbelegung (Heimspiele).'],
+    ['', 'Checkbox A2: Sperrungen einblenden.'],
+    ['', ''],
+    ['WEB-VERÖFFENTLICHUNG:', 'Datei → Freigeben → Für das Web veröffentlichen'],
+    ['', 'Blatt "Belegungsplan" auswählen.'],
+    ['', 'Checkboxen VOR dem Veröffentlichen nach Wunsch setzen.'],
+    ['', ''],
+    ['FREIGABE:', 'Datei → Freigeben → E-Mail der Mannschaftsführer hinzufügen'],
+    ['', 'Berechtigung: "Bearbeiter".'],
+    ['', 'Andere Mitglieder: Link aus Web-Veröffentlichung.'],
+  ];
+
+  var range = sheet.getRange(2, 10, instructions.length, 2);
+  range.setValues(instructions);
+  range.setFontSize(10);
+  // Titel-Spalte fett
+  for (var r = 0; r < instructions.length; r++) {
+    if (instructions[r][0]) {
+      sheet.getRange(r + 2, 10).setFontWeight('bold');
+    }
+  }
+
+  // Spalte K breiter machen
+  sheet.setColumnWidth(11, 480);
+
   sheet.setFrozenRows(1);
 }
 
@@ -220,9 +273,9 @@ function createEingabeSheet(ss, sep) {
   sheet.getRange(2, 2, 1000, 1).setNumberFormat('HH:MM');
   sheet.getRange(2, 3, 1000, 1).setNumberFormat('HH:MM');
 
-  // Spalte C: späteste Endzeit = Startzeit + Spieldauer aus Setup!F1
-  sheet.getRange(2, 3, 999, 1)
-    .setFormula('=IF(B2=""' + sep + ' ""' + sep + ' B2 + Setup!F1/24)');
+  // Spalte C: späteste Endzeit (wird per Script beim Eintrag der Startzeit berechnet)
+  sheet.getRange(2, 3, 1000, 1).setNumberFormat('HH:MM');
+  sheet.getRange(1, 3).setNote('Wird automatisch beim Eintragen der Startzeit berechnet (Startzeit + Spieldauer aus Setup).');
 
   // Date picker
   var dateRule = SpreadsheetApp.newDataValidation()
@@ -434,12 +487,41 @@ function handleEdit(e) {
   if (name === CONFIG.SHEET_EINGABE) {
     if (e.range.getRow() < 2) return;
     var col = e.range.getColumn();
+
+    // Spalte B (Startzeit): "12" → 12:00 konvertieren + Endzeit berechnen
+    if (col === 2) {
+      var rawVal = e.range.getValue();
+      if (typeof rawVal === 'number' && rawVal >= 1 && rawVal < 24) {
+        var h = Math.floor(rawVal);
+        var m = Math.round((rawVal - h) * 60);
+        e.range.setValue(new Date(1899, 11, 30, h, m, 0));
+      }
+      computeEndzeit(e.range);
+    }
+
     var relevantCols = [1, 2, 3, 4, 5, 7];
     if (relevantCols.indexOf(col) === -1 && col !== 6 && col !== 8) return;
     validateAllEntries();
   } else if (name === CONFIG.SHEET_SPERRUNGEN) {
     if (e.range.getRow() < 2) return;
     validateAllEntries();
+  }
+}
+
+function computeEndzeit(startCell) {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sheet = startCell.getSheet();
+  var row = startCell.getRow();
+  var setupSheet = ss.getSheetByName(CONFIG.SHEET_SETUP);
+  if (!setupSheet) return;
+  var spieldauer = setupSheet.getRange('F1').getValue();
+  if (typeof spieldauer !== 'number' || spieldauer <= 0) spieldauer = CONFIG.GAME_DURATION_HOURS;
+  var startVal = startCell.getValue();
+  if (startVal instanceof Date && !isNaN(startVal.getTime())) {
+    var endDate = new Date(startVal.getTime() + spieldauer * 3600000);
+    sheet.getRange(row, 3).setValue(endDate);
+  } else {
+    sheet.getRange(row, 3).clearContent();
   }
 }
 
@@ -711,23 +793,5 @@ function onOpen() {
   ui.createMenu('Hallenbelegung')
     .addItem('Setup (neu einrichten)', 'setupSheet')
     .addItem('Jetzt validieren', 'validateAllEntries')
-    .addSeparator()
-    .addItem('Web-Veröffentlichung einrichten...', 'showPublishHelp')
     .addToUi();
-}
-
-function showPublishHelp() {
-  var ui = SpreadsheetApp.getUi();
-  ui.alert(
-    'Web-Veröffentlichung',
-    'So veröffentlichen Sie den Belegungsplan:\n\n' +
-    '1. Datei → Freigeben → Für das Web veröffentlichen\n' +
-    '2. Blatt "' + CONFIG.SHEET_PLAN + '" auswählen\n' +
-    '3. "Gesamtes Dokument" → "' + CONFIG.SHEET_PLAN + '"\n' +
-    '4. "Veröffentlichen" klicken\n' +
-    '5. Den generierten Link kopieren und teilen\n\n' +
-    'Tipp: Vor dem Veröffentlichen die Checkboxen in A1/A2 ' +
-    'nach Wunsch setzen (Nur Hallenbelegung / Sperrungen anzeigen).',
-    ui.ButtonSet.OK
-  );
 }

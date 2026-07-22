@@ -488,16 +488,16 @@ function handleEdit(e) {
     if (e.range.getRow() < 2) return;
     var col = e.range.getColumn();
 
-    // Spalte B (Startzeit): "12" → 12:00 konvertieren + Endzeit berechnen
-    if (col === 2) {
-      var rawVal = e.range.getValue();
-      if (typeof rawVal === 'number' && rawVal >= 1 && rawVal < 24) {
-        var h = Math.floor(rawVal);
-        var m = Math.round((rawVal - h) * 60);
-        e.range.setValue(new Date(1899, 11, 30, h, m, 0));
-      }
-      computeEndzeit(e.range);
+  // Spalte B (Startzeit): "12" → 12:00 konvertieren + Endzeit berechnen
+  if (col === 2) {
+    var rawVal = e.range.getValue();
+    if (typeof rawVal === 'number' && rawVal >= 1 && rawVal < 24) {
+      var h = Math.floor(rawVal);
+      var m = Math.round((rawVal - h) * 60);
+      e.range.setValue((h * 60 + m) / 1440);
     }
+    computeEndzeit(e.range);
+  }
 
     var relevantCols = [1, 2, 3, 4, 5, 7];
     if (relevantCols.indexOf(col) === -1 && col !== 6 && col !== 8) return;
@@ -517,9 +517,9 @@ function computeEndzeit(startCell) {
   var spieldauer = setupSheet.getRange('F1').getValue();
   if (typeof spieldauer !== 'number' || spieldauer <= 0) spieldauer = CONFIG.GAME_DURATION_HOURS;
   var startVal = startCell.getValue();
-  if (startVal instanceof Date && !isNaN(startVal.getTime())) {
-    var endDate = new Date(startVal.getTime() + spieldauer * 3600000);
-    sheet.getRange(row, 3).setValue(endDate);
+  var frac = timeToFraction(startVal);
+  if (frac !== null) {
+    sheet.getRange(row, 3).setValue(frac + spieldauer / 24);
   } else {
     sheet.getRange(row, 3).clearContent();
   }
@@ -592,9 +592,10 @@ function validateAllEntries() {
           if (weekday === 6 || weekday === 0) {
             var otherStart = data[k][1];
             var otherEnd = data[k][2];
-            if (isValidTime(startzeit) && isValidTime(endzeit) &&
-                isValidTime(otherStart) && isValidTime(otherEnd)) {
-              if (startzeit.getTime() < otherEnd.getTime() && endzeit.getTime() > otherStart.getTime()) {
+            var s1 = timeToFraction(startzeit), e1 = timeToFraction(endzeit);
+            var s2 = timeToFraction(otherStart), e2 = timeToFraction(otherEnd);
+            if (s1 !== null && e1 !== null && s2 !== null && e2 !== null) {
+              if (s1 < e2 && e1 > s2) {
                 statusMessages[i].push('❌ Zeitüberlappung in "' + bereich + '"');
                 break;
               }
@@ -622,7 +623,10 @@ function validateAllEntries() {
 
         if (isValidTime(sStart) && isValidTime(sEnd)) {
           if (isValidTime(startzeit) && isValidTime(endzeit)) {
-            if (startzeit.getTime() < sEnd.getTime() && endzeit.getTime() > sStart.getTime()) {
+            var bs = timeToFraction(startzeit), be = timeToFraction(endzeit);
+            var ss = timeToFraction(sStart), se = timeToFraction(sEnd);
+            if (bs !== null && be !== null && ss !== null && se !== null) {
+              if (bs < se && be > ss) {
               var msg = '❌ Überschneidung mit Sperrung';
               if (sperrungen[s].kommentar) msg += ': ' + sperrungen[s].kommentar;
               statusMessages[i].push(msg);
@@ -757,6 +761,16 @@ function isValidTime(t) {
     return true;
   }
   return false;
+}
+
+function timeToFraction(t) {
+  if (t instanceof Date && !isNaN(t.getTime())) {
+    return (t.getHours() * 3600 + t.getMinutes() * 60 + t.getSeconds()) / 86400;
+  }
+  if (typeof t === 'number' && t >= 0 && t < 1) {
+    return t;
+  }
+  return null;
 }
 
 function datumToKey(datum) {

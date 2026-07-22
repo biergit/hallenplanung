@@ -50,7 +50,9 @@ var CONFIG = {
 function setupSheet() {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
   var locale = ss.getSpreadsheetLocale();
-  var separator = locale.startsWith('de') ? ';' : ',';
+  var isGerman = locale.startsWith('de');
+  var sep = isGerman ? ';' : ',';
+  var arrSep = isGerman ? '\\' : ',';
 
   // Bestehende Blätter löschen
   var sheetNames = ['Belegungsplan', 'Eingabe', 'Sperrungen', 'Teams'];
@@ -60,10 +62,10 @@ function setupSheet() {
   });
 
   // Teams zuerst (Eingabe referenziert Teams für Dropdown)
-  createTeamsSheet(ss, separator);
-  createSperrungenSheet(ss, separator);
-  createEingabeSheet(ss, separator);
-  createBelegungsplanSheet(ss, separator);
+  createTeamsSheet(ss, sep);
+  createSperrungenSheet(ss, sep);
+  createEingabeSheet(ss, sep);
+  createBelegungsplanSheet(ss, sep, arrSep);
 
   // Installierbaren Trigger einrichten
   createTrigger();
@@ -118,14 +120,14 @@ function createTeamsSheet(ss, sep) {
   ];
   sheet.getRange(2, 1, exampleData.length, 2).setValues(exampleData);
 
-  // Formel für Teamname (C): Rang 1 = nur Gruppenname, sonst "Gruppe RÖMISCH(Rang)"
-  // Relative Referenzen: A2/B2 werden von Google Sheets automatisch an die Zeile angepasst
+  // Formel für Teamname (C): Nur berechnen wenn Rang eingetragen ist
+  // Rang 1 = nur Gruppenname, sonst "Gruppe RÖMISCH(Rang)"
   sheet.getRange(2, 3, 999, 1)
-    .setFormula('=IF(A2=1' + sep + ' B2' + sep + ' B2 & " " & ROMAN(A2))');
+    .setFormula('=IF(A2=""' + sep + ' ""' + sep + ' IF(A2=1' + sep + ' B2' + sep + ' B2 & " " & ROMAN(A2)))');
 
-  // Formel für Kurzname (D): Erster Buchstabe + ggf. Zahl + Römische Rangzahl
+  // Formel für Kurzname (D): Nur berechnen wenn Rang eingetragen ist
   sheet.getRange(2, 4, 999, 1)
-    .setFormula('=LEFT(B2' + sep + '1) & IFERROR(REGEXEXTRACT(B2' + sep + '"\\d+")' + sep + ' "") & " " & ROMAN(A2)');
+    .setFormula('=IF(A2=""' + sep + ' ""' + sep + ' LEFT(B2' + sep + '1) & IFERROR(REGEXEXTRACT(B2' + sep + '"\\d+")' + sep + ' "") & " " & ROMAN(A2))');
 
   // Datenvalidierung: Gruppe (B) = Dropdown aus G2:G
   var gruppeRule = SpreadsheetApp.newDataValidation()
@@ -318,7 +320,7 @@ function createEingabeSheet(ss, sep) {
 
 // -------------------- Belegungsplan-Blatt --------------------
 
-function createBelegungsplanSheet(ss, sep) {
+function createBelegungsplanSheet(ss, sep, arrSep) {
   var sheet = ss.insertSheet('Belegungsplan', 3);
 
   // Checkbox in A1 zum Umschalten Heim/Alle
@@ -340,13 +342,14 @@ function createBelegungsplanSheet(ss, sep) {
 
   // QUERY-Formel in A3: zeigt alle Spiele oder nur Heimspiele je nach Checkbox
   // Die Formel erzeugt eine zusätzliche Spalte (Col9) mit dem Wochentag
-  // Innerhalb von {...} ist , immer der Array-Spaltentrenner (unabhängig von Locale)
+  // arrSep = Array-Spaltentrenner (\ für DE, , für EN)
+  // sep    = Funktionsargument-Trenner (; für DE, , für EN)
   var formula = '=IF(A1' + sep +
-    'QUERY({Eingabe!A2:H, ARRAYFORMULA(TEXT(Eingabe!A2:A,"TTT"))}' + sep +
+    'QUERY({Eingabe!A2:H' + arrSep + ' ARRAYFORMULA(TEXT(Eingabe!A2:A' + sep + '"TTT"))}' + sep +
     '"SELECT Col1, Col9, Col2, Col6, Col3, Col4, Col5, Col7, Col8 ' +
     'WHERE Col1 IS NOT NULL AND Col4=\'Heim\' ' +
     'ORDER BY Col1, Col2"' + sep + ' 1)' + sep +
-    'QUERY({Eingabe!A2:H, ARRAYFORMULA(TEXT(Eingabe!A2:A,"TTT"))}' + sep +
+    'QUERY({Eingabe!A2:H' + arrSep + ' ARRAYFORMULA(TEXT(Eingabe!A2:A' + sep + '"TTT"))}' + sep +
     '"SELECT Col1, Col9, Col2, Col6, Col3, Col4, Col5, Col7, Col8 ' +
     'WHERE Col1 IS NOT NULL ' +
     'ORDER BY Col1, Col2"' + sep + ' 1)' +

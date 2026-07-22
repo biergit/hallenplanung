@@ -41,10 +41,13 @@ var CONFIG = {
   INITIAL_GROUPS: ['Erwachsene', 'Damen', 'Jugend 19', 'Jugend 15'],
 
   // Blattnamen
-  SHEET_TEAMS: 'Teams',
+  SHEET_SETUP: 'Setup',
   SHEET_SPERRUNGEN: 'Sperrungen/Anderweitige Belegungen',
   SHEET_EINGABE: 'Eingabe',
-  SHEET_PLAN: 'Belegungsplan'
+  SHEET_PLAN: 'Belegungsplan',
+
+  // Standard-Spieldauer in Stunden (konfigurierbar in Setup!F1)
+  GAME_DURATION_HOURS: 4
 };
 
 // ==================== SETUP ====================
@@ -56,13 +59,13 @@ function setupSheet() {
   var sep = isGerman ? ';' : ',';
   var arrSep = isGerman ? '\\' : ',';
 
-  var sheetNames = [CONFIG.SHEET_PLAN, CONFIG.SHEET_EINGABE, CONFIG.SHEET_SPERRUNGEN, CONFIG.SHEET_TEAMS];
+  var sheetNames = [CONFIG.SHEET_PLAN, CONFIG.SHEET_EINGABE, CONFIG.SHEET_SPERRUNGEN, CONFIG.SHEET_SETUP];
   sheetNames.forEach(function(name) {
     var sheet = ss.getSheetByName(name);
     if (sheet) ss.deleteSheet(sheet);
   });
 
-  createTeamsSheet(ss, sep);
+  createSetupSheet(ss, sep);
   createSperrungenSheet(ss, sep);
   createEingabeSheet(ss, sep);
   createBelegungsplanSheet(ss, sep, arrSep);
@@ -73,7 +76,7 @@ function setupSheet() {
   ui.alert(
     'Setup abgeschlossen!',
     'Die folgenden Blätter wurden erstellt:\n\n' +
-    '  1. ' + CONFIG.SHEET_TEAMS + ' – Team-Konfiguration (bitte Teams eintragen)\n' +
+    '  1. ' + CONFIG.SHEET_SETUP + ' – Team-Konfiguration und Einstellungen\n' +
     '  2. ' + CONFIG.SHEET_SPERRUNGEN + ' – Gesperrte Tage, Bereiche, Zeiträume\n' +
     '  3. ' + CONFIG.SHEET_EINGABE + ' – Dateneingabe für Mannschaftsführer\n' +
     '  4. ' + CONFIG.SHEET_PLAN + ' – Kalenderansicht\n\n' +
@@ -84,16 +87,23 @@ function setupSheet() {
   );
 }
 
-// -------------------- Teams-Blatt --------------------
+// -------------------- Setup-Blatt --------------------
 
-function createTeamsSheet(ss, sep) {
-  var sheet = ss.insertSheet(CONFIG.SHEET_TEAMS, 0);
+function createSetupSheet(ss, sep) {
+  var sheet = ss.insertSheet(CONFIG.SHEET_SETUP, 0);
 
   var headers = ['Rang', 'Gruppe', 'Teamname', 'Kurzname'];
   sheet.getRange(1, 1, 1, 4)
     .setValues([headers])
     .setFontWeight('bold')
     .setBackground('#E8E8E8');
+
+  // Spieldauer-Konfiguration in E1/F1
+  sheet.getRange('E1').setValue('Spieldauer (h):');
+  sheet.getRange('E1').setFontWeight('bold');
+  sheet.getRange('F1').setValue(CONFIG.GAME_DURATION_HOURS);
+  sheet.getRange('F1').setNumberFormat('0.0');
+  sheet.getRange('F1').setNote('Standard-Spieldauer in Stunden. Wird für die Berechnung der spätesten Endzeit verwendet.');
 
   sheet.getRange(1, 7).setValue('Gruppenliste');
   sheet.getRange(1, 7).setFontWeight('bold');
@@ -210,9 +220,9 @@ function createEingabeSheet(ss, sep) {
   sheet.getRange(2, 2, 1000, 1).setNumberFormat('HH:MM');
   sheet.getRange(2, 3, 1000, 1).setNumberFormat('HH:MM');
 
-  // Spalte C: späteste Endzeit = Startzeit + 4h
+  // Spalte C: späteste Endzeit = Startzeit + Spieldauer aus Setup!F1
   sheet.getRange(2, 3, 999, 1)
-    .setFormula('=IF(B2=""' + sep + ' ""' + sep + ' B2 + 4/24)');
+    .setFormula('=IF(B2=""' + sep + ' ""' + sep + ' B2 + Setup!F1/24)');
 
   // Date picker
   var dateRule = SpreadsheetApp.newDataValidation()
@@ -222,10 +232,10 @@ function createEingabeSheet(ss, sep) {
     .build();
   sheet.getRange(2, 1, 1000, 1).setDataValidation(dateRule);
 
-  // Team-Dropdown
-  var teamsSheet = ss.getSheetByName(CONFIG.SHEET_TEAMS);
+  // Team-Dropdown aus Setup-Blatt
+  var setupSheet = ss.getSheetByName(CONFIG.SHEET_SETUP);
   var teamRule = SpreadsheetApp.newDataValidation()
-    .requireValueInRange(teamsSheet.getRange('C2:C1000'))
+    .requireValueInRange(setupSheet.getRange('C2:C1000'))
     .setAllowInvalid(false)
     .build();
   sheet.getRange(2, 4, 1000, 1).setDataValidation(teamRule);
@@ -333,28 +343,33 @@ function createBelegungsplanSheet(ss, sep, arrSep) {
     .setFontWeight('bold')
     .setBackground('#E8E8E8');
 
-  // QUERY-Bausteine
-  // ea: Eingabe-Abfrage mit dynamischem Heim-Filter per IF(A1;...)
-  // sa: Sperrungen als Pseudo-Einträge
-  // Formel: =IF(A2; {ea; sa}; ea)
+  // QUERY-Bausteine (ohne &-Konkatenierung, ohne IF in {}-Literal)
+  // QH = nur Heimspiele, QA = alle Spiele, QS = Sperrungen
+  // Formel: =IF(A1; IF(A2; {QH; QS}; QH); IF(A2; {QA; QS}; QA))
 
-  var sel = '"SELECT Col1, Col10, Col2, Col7, Col4, Col5, Col6, Col8, Col9 WHERE Col1 IS NOT NULL';
-  var order = ' ORDER BY Col1, Col2"';
+  var qBase = 'QUERY({Eingabe!A2:I' + arrSep +
+    ' ARRAYFORMULA(TEXT(Eingabe!A2:A' + sep + '"ddd"))}' + sep;
 
-  var ea = 'QUERY({Eingabe!A2:I' + arrSep +
-    ' ARRAYFORMULA(TEXT(Eingabe!A2:A' + sep + '"ddd"))}' + sep +
-    sel + ' & IF(A1' + sep + ' " AND Col5=\'Heim\'"' + sep + ' "") & "' + order + sep + ' 0)';
+  var sqlHeim = '"SELECT Col1, Col10, Col2, Col7, Col4, Col5, Col6, Col8, Col9 ' +
+    'WHERE Col1 IS NOT NULL AND Col5=\'Heim\' ORDER BY Col1, Col2"';
+  var sqlAll = '"SELECT Col1, Col10, Col2, Col7, Col4, Col5, Col6, Col8, Col9 ' +
+    'WHERE Col1 IS NOT NULL ORDER BY Col1, Col2"';
 
-  var sa = 'QUERY({\'' + sperrName + '\'!A2:E' + arrSep +
+  var QH = qBase + sqlHeim + sep + ' 0)';
+  var QA = qBase + sqlAll + sep + ' 0)';
+
+  var QS = 'QUERY({\'' + sperrName + '\'!A2:E' + arrSep +
     ' ARRAYFORMULA(TEXT(\'' + sperrName + '\'!A2:A' + sep + '"ddd"))' + arrSep +
     ' ARRAYFORMULA(IF(\'' + sperrName + '\'!B2:B=""' + sep +
     ' "ganztägig"' + sep +
     ' TEXT(\'' + sperrName + '\'!B2:B' + sep + '"HH:MM")&" - "&' +
     'TEXT(\'' + sperrName + '\'!C2:C' + sep + '"HH:MM")))}' + sep +
     '"SELECT Col1, Col6, Col2, Col4, \'🔒 GESPERRT\', \'\', Col7, Col5, \'Sperrung\' ' +
-    'WHERE Col1 IS NOT NULL' + order + sep + ' 0)';
+    'WHERE Col1 IS NOT NULL ORDER BY Col1, Col2"' + sep + ' 0)';
 
-  var formula = '=IF(A2' + sep + ' {' + ea + sep + ' ' + sa + '}' + sep + ' ' + ea + ')';
+  var formula = '=IF(A1' + sep +
+    ' IF(A2' + sep + ' {' + QH + sep + ' ' + QS + '}' + sep + ' ' + QH + ')' + sep +
+    ' IF(A2' + sep + ' {' + QA + sep + ' ' + QS + '}' + sep + ' ' + QA + '))';
 
   sheet.getRange(4, 1).setFormula(formula);
 
@@ -609,7 +624,7 @@ function checkAdjacentTeams(data, teams) {
 // -------------------- Daten lesen --------------------
 
 function readTeams(ss) {
-  var sheet = ss.getSheetByName(CONFIG.SHEET_TEAMS);
+  var sheet = ss.getSheetByName(CONFIG.SHEET_SETUP);
   if (!sheet) return {};
 
   var lastRow = sheet.getLastRow();

@@ -584,31 +584,30 @@ function validateAllEntries() {
     // 1d. Doppelbuchung prüfen
     if (ha === 'Heim' && bereich) {
       for (var k = 0; k < data.length; k++) {
-        if (k !== i && isValidDate(data[k][0]) &&
-            datumToKey(data[k][0]) === dateKey &&
-            data[k][4] === 'Heim' &&
-            data[k][6] === bereich) {
+          if (k !== i && isValidDate(data[k][0]) &&
+              datumToKey(data[k][0]) === dateKey &&
+              data[k][4] === 'Heim' &&
+              data[k][6] === bereich) {
 
-          if (weekday === 6 || weekday === 0) {
-            var otherStart = data[k][1];
-            var otherEnd = data[k][2];
-            var s1 = timeToFraction(startzeit), e1 = timeToFraction(endzeit);
-            var s2 = timeToFraction(otherStart), e2 = timeToFraction(otherEnd);
-            if (s1 !== null && e1 !== null && s2 !== null && e2 !== null) {
-              if (s1 < e2 && e1 > s2) {
-                statusMessages[i].push('❌ Zeitüberlappung in "' + bereich + '"');
+            if (weekday === 6 || weekday === 0) {
+              var otherStart = data[k][1];
+              var otherEnd = data[k][2];
+              var s1 = timeToFraction(startzeit), e1 = timeToFraction(endzeit);
+              var s2 = timeToFraction(otherStart), e2 = timeToFraction(otherEnd);
+              if (s1 !== null && e1 !== null && s2 !== null && e2 !== null) {
+                if (s1 < e2 && e1 > s2) {
+                  statusMessages[i].push('❌ Zeitüberlappung in "' + bereich + '"');
+                  break;
+                }
+              } else {
+                statusMessages[i].push('❌ "' + bereich + '" bereits belegt (Startzeit fehlt)');
                 break;
               }
-          }
-        } else {
-              statusMessages[i].push('❌ "' + bereich + '" bereits belegt (Startzeit fehlt)');
+            } else {
+              statusMessages[i].push('❌ "' + bereich + '" an diesem Tag bereits belegt');
               break;
             }
-          } else {
-            statusMessages[i].push('❌ "' + bereich + '" an diesem Tag bereits belegt');
-            break;
           }
-        }
       }
     }
 

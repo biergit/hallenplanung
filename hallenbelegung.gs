@@ -599,7 +599,8 @@ function validateAllEntries() {
                 statusMessages[i].push('❌ Zeitüberlappung in "' + bereich + '"');
                 break;
               }
-            } else {
+          }
+        } else {
               statusMessages[i].push('❌ "' + bereich + '" bereits belegt (Startzeit fehlt)');
               break;
             }

@@ -13,9 +13,9 @@ Google Apps Script für die Hallenbelegungsplanung eines Tischtennisvereins.
 
 ## Funktionen
 
-- Hallenbereiche: Große Halle links, kleine Halle, große Halle rechts, große Halle mitte
+- Hallenbereiche: Große Halle links, Kleine Halle, Große Halle rechts, Große Halle Mitte
 - Spieltage: Di, Mi, Fr, Sa, So
-- Mittwoch: nur "kleine Halle" buchbar
+- Mittwoch: nur "Kleine Halle" buchbar
 - Di + Fr: maximal 2 Bereiche (Platz für Training)
 - Heim-/Auswärtsspiele farblich unterschieden (grün/blau)
 - Ersatzspieler-Hinweis: benachbarte Teams (gleiche Gruppe, Rangunterschied 1) am selben Tag werden markiert

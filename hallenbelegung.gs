@@ -24,9 +24,9 @@ var CONFIG = {
   // Die vier Hallenbereiche
   AREAS: [
     'Große Halle links',
-    'kleine Halle',
-    'große Halle rechts',
-    'große Halle mitte'
+    'Kleine Halle',
+    'Große Halle rechts',
+    'Große Halle Mitte'
   ],
 
   // Erlaubte Wochentage (JavaScript getDay: 0=So, 1=Mo, 2=Di, 3=Mi, 4=Do, 5=Fr, 6=Sa)
@@ -36,7 +36,7 @@ var CONFIG = {
   WEEKDAY_NAMES: ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa'],
 
   // Mittwochs ist nur dieser Bereich buchbar
-  WEDNESDAY_AREA: 'kleine Halle',
+  WEDNESDAY_AREA: 'Kleine Halle',
 
   // Dienstags und freitags maximal so viele Bereiche
   MAX_AREAS_TUE_FRI: 2,
@@ -308,7 +308,7 @@ function createEingabeSheet(ss, sep) {
   sheet.getRange(1, 9).setValue(
     'Hinweise:\n' +
     '- Nur Di/Mi/Fr/Sa/So erlaubt\n' +
-    '- Mi: nur "kleine Halle"\n' +
+    '- Mi: nur "Kleine Halle"\n' +
     '- Di+Fr: max. 2 Bereiche\n' +
     '- Heimspiel: Bereich erforderlich\n' +
     '- Auswärtsspiel: Bereich frei lassen'
@@ -466,7 +466,7 @@ function validateAllEntries() {
       statusMessages[i].push('❌ Nur Di, Mi, Fr, Sa, So erlaubt');
     }
 
-    // 1b. Mittwoch: nur kleine Halle
+    // 1b. Mittwoch: nur Kleine Halle
     if (weekday === 3 && ha === 'Heim' && bereich && bereich !== CONFIG.WEDNESDAY_AREA) {
       statusMessages[i].push('❌ Mittwochs nur "' + CONFIG.WEDNESDAY_AREA + '" buchbar');
     }

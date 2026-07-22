@@ -285,7 +285,6 @@ function createEingabeSheet(ss, sep) {
   sheet.setColumnWidth(8, 250);
   sheet.setColumnWidth(9, 350);
 
-  sheet.hideColumns(3);
   sheet.setFrozenRows(1);
 
   sheet.getRange(1, 9).setNote(
@@ -335,18 +334,16 @@ function createBelegungsplanSheet(ss, sep, arrSep) {
     .setBackground('#E8E8E8');
 
   // QUERY-Bausteine
-  // ea_heim: nur Heimspiele aus Eingabe
-  // ea_alle: alle Spiele aus Eingabe
+  // ea: Eingabe-Abfrage mit dynamischem Heim-Filter per IF(A1;...)
   // sa: Sperrungen als Pseudo-Einträge
-  // Formel in A4: =IF(A2; IFERROR({IF(A1;ea_heim;ea_all); sa}; IF(A1;ea_heim;ea_all)); IF(A1;ea_heim;ea_all))
+  // Formel: =IF(A2; {ea; sa}; ea)
 
-  var qBase = 'QUERY({Eingabe!A2:I' + arrSep +
-    ' ARRAYFORMULA(TEXT(Eingabe!A2:A' + sep + '"ddd"))}' + sep;
+  var sel = '"SELECT Col1, Col10, Col2, Col7, Col4, Col5, Col6, Col8, Col9 WHERE Col1 IS NOT NULL';
+  var order = ' ORDER BY Col1, Col2"';
 
-  var selBase = '"SELECT Col1, Col10, Col2, Col7, Col4, Col5, Col6, Col8, Col9 WHERE Col1 IS NOT NULL';
-
-  var eaAll = qBase + selBase + ' ORDER BY Col1, Col2"' + sep + ' 0)';
-  var eaHeim = qBase + selBase + ' AND Col5=\'Heim\' ORDER BY Col1, Col2"' + sep + ' 0)';
+  var ea = 'QUERY({Eingabe!A2:I' + arrSep +
+    ' ARRAYFORMULA(TEXT(Eingabe!A2:A' + sep + '"ddd"))}' + sep +
+    sel + ' & IF(A1' + sep + ' " AND Col5=\'Heim\'"' + sep + ' "") & "' + order + sep + ' 0)';
 
   var sa = 'QUERY({\'' + sperrName + '\'!A2:E' + arrSep +
     ' ARRAYFORMULA(TEXT(\'' + sperrName + '\'!A2:A' + sep + '"ddd"))' + arrSep +
@@ -355,12 +352,9 @@ function createBelegungsplanSheet(ss, sep, arrSep) {
     ' TEXT(\'' + sperrName + '\'!B2:B' + sep + '"HH:MM")&" - "&' +
     'TEXT(\'' + sperrName + '\'!C2:C' + sep + '"HH:MM")))}' + sep +
     '"SELECT Col1, Col6, Col2, Col4, \'🔒 GESPERRT\', \'\', Col7, Col5, \'Sperrung\' ' +
-    'WHERE Col1 IS NOT NULL ORDER BY Col1, Col2"' + sep + ' 0)';
+    'WHERE Col1 IS NOT NULL' + order + sep + ' 0)';
 
-  var formula = '=IF(A2' + sep +
-    ' IFERROR({IF(A1' + sep + ' ' + eaHeim + sep + ' ' + eaAll + ')' + sep + ' ' + sa + '}' + sep +
-    ' IF(A1' + sep + ' ' + eaHeim + sep + ' ' + eaAll + '))' + sep +
-    ' IF(A1' + sep + ' ' + eaHeim + sep + ' ' + eaAll + '))';
+  var formula = '=IF(A2' + sep + ' {' + ea + sep + ' ' + sa + '}' + sep + ' ' + ea + ')';
 
   sheet.getRange(4, 1).setFormula(formula);
 
@@ -413,7 +407,7 @@ function createBelegungsplanSheet(ss, sep, arrSep) {
   sheet.setColumnWidth(9, 300);
 
   sheet.setFrozenRows(3);
-  protectRange(sheet, 'A1:I3');
+  protectRange(sheet, 'A3:I3');
 }
 
 // ==================== VALIDIERUNG ====================

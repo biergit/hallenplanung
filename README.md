@@ -1,0 +1,43 @@
+# Hallenbelegung Tischtennis
+
+Google Apps Script für die Hallenbelegungsplanung eines Tischtennisvereins.
+
+## Enthaltene Blätter
+
+| Blatt | Zweck |
+|-------|-------|
+| Teams | Team-Konfiguration (Rang, Gruppe, Name/Kurzname per Formel) |
+| Sperrungen | Gesperrte Tage und Bereiche |
+| Eingabe | Dateneingabe durch Mannschaftsführer (mit Validierung) |
+| Belegungsplan | Öffentliche Kalenderansicht (für Web-Veröffentlichung) |
+
+## Funktionen
+
+- Hallenbereiche: Große Halle links, kleine Halle, große Halle rechts, große Halle mitte
+- Spieltage: Di, Mi, Fr, Sa, So
+- Mittwoch: nur "kleine Halle" buchbar
+- Di + Fr: maximal 2 Bereiche (Platz für Training)
+- Heim-/Auswärtsspiele farblich unterschieden (grün/blau)
+- Ersatzspieler-Hinweis: benachbarte Teams (gleiche Gruppe, Rangunterschied 1) am selben Tag werden markiert
+- Web-Veröffentlichung mit Umschalter "Nur Hallenbelegung" / "Alle Spiele"
+
+## Installation
+
+1. Google Sheet erstellen (Tabellenkalkulation)
+2. **Erweiterungen → Apps Script**
+3. Code aus `hallenbelegung.gs` vollständig einfügen
+4. Funktion `setupSheet` auswählen und ausführen (▶️)
+5. Zweimal Berechtigungen erteilen
+6. Zurück zum Sheet – alles ist eingerichtet
+
+## Web-Veröffentlichung
+
+- **Datei → Für das Web veröffentlichen**
+- Blatt "Belegungsplan" auswählen
+- Link teilen
+
+## Freigabe an Mannschaftsführer
+
+- **Datei → Freigeben**
+- E-Mail-Adressen der Mannschaftsführer hinzufügen
+- Berechtigung: "Bearbeiter"

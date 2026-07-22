@@ -72,9 +72,7 @@ function setupSheet() {
 
   createTrigger();
 
-  var ui = SpreadsheetApp.getUi();
-  ui.alert(
-    'Setup abgeschlossen!',
+  var msg = 'Setup abgeschlossen!\n\n' +
     'Die folgenden Blätter wurden erstellt:\n\n' +
     '  1. ' + CONFIG.SHEET_SETUP + ' – Team-Konfiguration und Einstellungen\n' +
     '  2. ' + CONFIG.SHEET_SPERRUNGEN + ' – Gesperrte Tage, Bereiche, Zeiträume\n' +
@@ -82,9 +80,12 @@ function setupSheet() {
     '  4. ' + CONFIG.SHEET_PLAN + ' – Kalenderansicht\n\n' +
     'Die Validierung läuft automatisch bei jeder Eingabe.\n\n' +
     'Für die Web-Veröffentlichung:\n' +
-    '  Datei → Für das Web veröffentlichen → ' + CONFIG.SHEET_PLAN,
-    ui.ButtonSet.OK
-  );
+    '  Datei → Für das Web veröffentlichen → ' + CONFIG.SHEET_PLAN;
+  try {
+    SpreadsheetApp.getUi().alert(msg);
+  } catch (e) {
+    Logger.log(msg);
+  }
 }
 
 // -------------------- Setup-Blatt --------------------

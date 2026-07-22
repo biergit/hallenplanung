@@ -526,14 +526,35 @@ function validateAllEntries() {
     }
 
     // 1d. Doppelbuchung prüfen
+    // Di/Mi/Fr: gleicher Bereich + Datum immer verboten
+    // Sa/So: nur bei Zeitüberlappung verboten
     if (ha === 'Heim' && bereich) {
       for (var k = 0; k < data.length; k++) {
         if (k !== i && isValidDate(data[k][0]) &&
             datumToKey(data[k][0]) === dateKey &&
             data[k][4] === 'Heim' &&
             data[k][6] === bereich) {
-          statusMessages[i].push('❌ "' + bereich + '" an diesem Tag bereits belegt');
-          break;
+
+          // Sa/So: Zeitüberlappung prüfen
+          if (weekday === 6 || weekday === 0) {
+            var otherStart = data[k][1];
+            var otherEnd = data[k][2];
+
+            if (isValidTime(startzeit) && isValidTime(endzeit) &&
+                isValidTime(otherStart) && isValidTime(otherEnd)) {
+              if (startzeit < otherEnd && endzeit > otherStart) {
+                statusMessages[i].push('❌ Zeitüberlappung in "' + bereich + '"');
+                break;
+              }
+            } else {
+              statusMessages[i].push('❌ "' + bereich + '" bereits belegt (Startzeit fehlt)');
+              break;
+            }
+          } else {
+            // Di, Mi, Fr: immer verboten
+            statusMessages[i].push('❌ "' + bereich + '" an diesem Tag bereits belegt');
+            break;
+          }
         }
       }
     }

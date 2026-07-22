@@ -7,7 +7,7 @@ Google Apps Script für die Hallenbelegungsplanung eines Tischtennisvereins.
 | Blatt | Zweck |
 |-------|-------|
 | Teams | Team-Konfiguration (Rang, Gruppe, Name/Kurzname per Formel) |
-| Sperrungen | Gesperrte Tage und Bereiche |
+| Sperrungen/Anderweitige Belegungen | Gesperrte Tage, Bereiche und Zeiträume |
 | Eingabe | Dateneingabe durch Mannschaftsführer (mit Validierung) |
 | Belegungsplan | Öffentliche Kalenderansicht (für Web-Veröffentlichung) |
 
@@ -19,7 +19,12 @@ Google Apps Script für die Hallenbelegungsplanung eines Tischtennisvereins.
 - Di + Fr: maximal 2 Bereiche (Platz für Training)
 - Heim-/Auswärtsspiele farblich unterschieden (grün/blau)
 - Ersatzspieler-Hinweis: benachbarte Teams (gleiche Gruppe, Rangunterschied 1) am selben Tag werden markiert
-- Web-Veröffentlichung mit Umschalter "Nur Hallenbelegung" / "Alle Spiele"
+- Sperrungen mit optionaler Start-/Endzeit (zeitbasierte oder ganztägige Sperrung)
+- Zeitüberlappungs-Prüfung zwischen Buchungen und Sperrungen
+- Web-Veröffentlichung mit zwei Umschaltern:
+  - "Nur Hallenbelegung" (blendet Auswärtsspiele aus)
+  - "Sperrungen anzeigen" (blendet Sperrungen ein)
+- Kalender-Datepicker für Datumseingabe
 
 ## Installation
 

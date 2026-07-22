@@ -12,16 +12,15 @@
  * 6. Zurück zum Sheet – alles ist eingerichtet
  *
  * Blätter:
- *  Teams          – Rang, Gruppe, generierter Teamname
- *  Sperrungen     – Gesperrte Tage und Bereiche
- *  Eingabe        – Dateneingabe durch Mannschaftsführer
- *  Belegungsplan  – Öffentliche Kalenderansicht
+ *  Teams                             – Rang, Gruppe, generierter Teamname
+ *  Sperrungen/Anderweitige Belegungen – Gesperrte Tage, Bereiche und Zeiträume
+ *  Eingabe                           – Dateneingabe durch Mannschaftsführer
+ *  Belegungsplan                     – Öffentliche Kalenderansicht
  */
 
 // ==================== KONFIGURATION ====================
 
 var CONFIG = {
-  // Die vier Hallenbereiche
   AREAS: [
     'Große Halle links',
     'Kleine Halle',
@@ -32,9 +31,6 @@ var CONFIG = {
   // Erlaubte Wochentage (JavaScript getDay: 0=So, 1=Mo, 2=Di, 3=Mi, 4=Do, 5=Fr, 6=Sa)
   ALLOWED_WEEKDAYS: [2, 3, 5, 6, 0],
 
-  // Deutsche Wochentags-Namen für Anzeige
-  WEEKDAY_NAMES: ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa'],
-
   // Mittwochs ist nur dieser Bereich buchbar
   WEDNESDAY_AREA: 'Kleine Halle',
 
@@ -42,7 +38,13 @@ var CONFIG = {
   MAX_AREAS_TUE_FRI: 2,
 
   // Vordefinierte Gruppen (kann in Spalte G des Teams-Blattes erweitert werden)
-  INITIAL_GROUPS: ['Erwachsene', 'Damen', 'Jugend 19', 'Jugend 15']
+  INITIAL_GROUPS: ['Erwachsene', 'Damen', 'Jugend 19', 'Jugend 15'],
+
+  // Blattnamen
+  SHEET_TEAMS: 'Teams',
+  SHEET_SPERRUNGEN: 'Sperrungen/Anderweitige Belegungen',
+  SHEET_EINGABE: 'Eingabe',
+  SHEET_PLAN: 'Belegungsplan'
 };
 
 // ==================== SETUP ====================
@@ -55,7 +57,7 @@ function setupSheet() {
   var arrSep = isGerman ? '\\' : ',';
 
   // Bestehende Blätter löschen
-  var sheetNames = ['Belegungsplan', 'Eingabe', 'Sperrungen', 'Teams'];
+  var sheetNames = [CONFIG.SHEET_PLAN, CONFIG.SHEET_EINGABE, CONFIG.SHEET_SPERRUNGEN, CONFIG.SHEET_TEAMS];
   sheetNames.forEach(function(name) {
     var sheet = ss.getSheetByName(name);
     if (sheet) ss.deleteSheet(sheet);
@@ -67,20 +69,19 @@ function setupSheet() {
   createEingabeSheet(ss, sep);
   createBelegungsplanSheet(ss, sep, arrSep);
 
-  // Installierbaren Trigger einrichten
   createTrigger();
 
   var ui = SpreadsheetApp.getUi();
   ui.alert(
     'Setup abgeschlossen!',
     'Die folgenden Blätter wurden erstellt:\n\n' +
-    '  1. Teams – Team-Konfiguration (bitte Teams eintragen)\n' +
-    '  2. Sperrungen – Gesperrte Tage / Bereiche\n' +
-    '  3. Eingabe – Dateneingabe für Mannschaftsführer\n' +
-    '  4. Belegungsplan – Kalenderansicht\n\n' +
+    '  1. ' + CONFIG.SHEET_TEAMS + ' – Team-Konfiguration (bitte Teams eintragen)\n' +
+    '  2. ' + CONFIG.SHEET_SPERRUNGEN + ' – Gesperrte Tage, Bereiche, Zeiträume\n' +
+    '  3. ' + CONFIG.SHEET_EINGABE + ' – Dateneingabe für Mannschaftsführer\n' +
+    '  4. ' + CONFIG.SHEET_PLAN + ' – Kalenderansicht\n\n' +
     'Die Validierung läuft automatisch bei jeder Eingabe.\n\n' +
     'Für die Web-Veröffentlichung:\n' +
-    '  Datei → Für das Web veröffentlichen → Belegungsplan',
+    '  Datei → Für das Web veröffentlichen → ' + CONFIG.SHEET_PLAN,
     ui.ButtonSet.OK
   );
 }
@@ -88,9 +89,8 @@ function setupSheet() {
 // -------------------- Teams-Blatt --------------------
 
 function createTeamsSheet(ss, sep) {
-  var sheet = ss.insertSheet('Teams', 0);
+  var sheet = ss.insertSheet(CONFIG.SHEET_TEAMS, 0);
 
-  // Überschriften
   var headers = ['Rang', 'Gruppe', 'Teamname', 'Kurzname'];
   sheet.getRange(1, 1, 1, 4)
     .setValues([headers])
@@ -108,7 +108,7 @@ function createTeamsSheet(ss, sep) {
     'Verfügbare Gruppen für das Dropdown.\nNeue Gruppen einfach in Spalte G ergänzen.'
   );
 
-  // Beispiel-Teams (Rang und Gruppe, Namen werden per Formel generiert)
+  // Beispiel-Teams
   var exampleData = [
     [1, 'Erwachsene'],
     [2, 'Erwachsene'],
@@ -120,12 +120,11 @@ function createTeamsSheet(ss, sep) {
   ];
   sheet.getRange(2, 1, exampleData.length, 2).setValues(exampleData);
 
-  // Formel für Teamname (C): Nur berechnen wenn Rang eingetragen ist
-  // Rang 1 = nur Gruppenname, sonst "Gruppe RÖMISCH(Rang)"
+  // Formel Teamname (C): Nur berechnen wenn Rang eingetragen ist
   sheet.getRange(2, 3, 999, 1)
     .setFormula('=IF(A2=""' + sep + ' ""' + sep + ' IF(A2=1' + sep + ' B2' + sep + ' B2 & " " & ROMAN(A2)))');
 
-  // Formel für Kurzname (D): Nur berechnen wenn Rang eingetragen ist
+  // Formel Kurzname (D): Nur berechnen wenn Rang eingetragen ist
   sheet.getRange(2, 4, 999, 1)
     .setFormula('=IF(A2=""' + sep + ' ""' + sep + ' LEFT(B2' + sep + '1) & IFERROR(REGEXEXTRACT(B2' + sep + '"\\d+")' + sep + ' "") & " " & ROMAN(A2))');
 
@@ -143,33 +142,40 @@ function createTeamsSheet(ss, sep) {
     .build();
   sheet.getRange(2, 1, 1000, 1).setDataValidation(rangRule);
 
-  // Kopfzeile schützen
   protectRange(sheet, 'A1:D1');
 
-  // Spaltenbreiten
   sheet.setColumnWidth(1, 60);
   sheet.setColumnWidth(2, 150);
   sheet.setColumnWidth(3, 200);
   sheet.setColumnWidth(4, 120);
   sheet.setColumnWidth(7, 150);
 
-  // Spalte G ausblenden
   sheet.hideColumns(7);
-
-  // Zeile 1 fixieren
   sheet.setFrozenRows(1);
 }
 
 // -------------------- Sperrungen-Blatt --------------------
 
 function createSperrungenSheet(ss, sep) {
-  var sheet = ss.insertSheet('Sperrungen', 1);
+  var sheet = ss.insertSheet(CONFIG.SHEET_SPERRUNGEN, 1);
 
-  var headers = ['Datum', 'Bereich', 'Grund'];
-  sheet.getRange(1, 1, 1, 3)
+  var headers = ['Datum', 'Startzeit', 'Endzeit', 'Bereich', 'Grund'];
+  sheet.getRange(1, 1, 1, 5)
     .setValues([headers])
     .setFontWeight('bold')
     .setBackground('#E8E8E8');
+
+  // Date picker für Datum
+  var dateRule = SpreadsheetApp.newDataValidation()
+    .requireDate()
+    .setAllowInvalid(true)
+    .setHelpText('Datum eingeben oder auswählen')
+    .build();
+  sheet.getRange(2, 1, 1000, 1).setDataValidation(dateRule);
+
+  // Zeitformat für Startzeit und Endzeit
+  sheet.getRange(2, 2, 1000, 1).setNumberFormat('HH:MM');
+  sheet.getRange(2, 3, 1000, 1).setNumberFormat('HH:MM');
 
   // Datenvalidierung: Bereich
   var areas = CONFIG.AREAS.concat(['Alle']);
@@ -177,36 +183,38 @@ function createSperrungenSheet(ss, sep) {
     .requireValueInList(areas)
     .setAllowInvalid(false)
     .build();
-  sheet.getRange(2, 2, 1000, 1).setDataValidation(bereichRule);
+  sheet.getRange(2, 4, 1000, 1).setDataValidation(bereichRule);
 
   // Datumsformat
   sheet.getRange(2, 1, 1000, 1).setNumberFormat('DD.MM.YYYY');
 
-  // Kopfzeile schützen
-  protectRange(sheet, 'A1:C1');
+  protectRange(sheet, 'A1:E1');
 
-  // Spaltenbreiten
   sheet.setColumnWidth(1, 120);
-  sheet.setColumnWidth(2, 200);
-  sheet.setColumnWidth(3, 300);
-
-  // Hinweis
-  sheet.getRange(1, 3).setNote(
-    '"Alle" = kompletter Tag gesperrt.\n' +
-    'Einzelner Bereich = nur dieser Bereich gesperrt.\n' +
-    'Grund ist optional.'
-  );
+  sheet.setColumnWidth(2, 100);
+  sheet.setColumnWidth(3, 100);
+  sheet.setColumnWidth(4, 200);
+  sheet.setColumnWidth(5, 350);
 
   sheet.setFrozenRows(1);
+
+  sheet.getRange(1, 5).setNote(
+    'Startzeit/Endzeit optional (Format HH:MM).\n' +
+    'Ohne Zeitangabe = ganztägig gesperrt.\n' +
+    '"Alle" = gesamte Halle an diesem Tag/in diesem Zeitraum gesperrt.'
+  );
 }
 
 // -------------------- Eingabe-Blatt --------------------
 
 function createEingabeSheet(ss, sep) {
-  var sheet = ss.insertSheet('Eingabe', 2);
+  var sheet = ss.insertSheet(CONFIG.SHEET_EINGABE, 2);
 
-  var headers = ['Datum', 'Startzeit', 'Team', 'Heim/Auswärts', 'Gegner', 'Bereich', 'Kommentar', '\u26A0\uFE0F Status'];
-  sheet.getRange(1, 1, 1, 8)
+  // Spalten:
+  // A=Datum, B=Startzeit, C=späteste Endzeit (Formel), D=Team, E=Heim/Auswärts,
+  // F=Gegner, G=Bereich, H=Kommentar, I=Status
+  var headers = ['Datum', 'Startzeit', 'späteste Endzeit', 'Team', 'Heim/Auswärts', 'Gegner', 'Bereich', 'Kommentar', '\u26A0\uFE0F Status'];
+  sheet.getRange(1, 1, 1, 9)
     .setValues([headers])
     .setFontWeight('bold')
     .setBackground('#E8E8E8');
@@ -214,98 +222,98 @@ function createEingabeSheet(ss, sep) {
   // Spaltenformatierung
   sheet.getRange(2, 1, 1000, 1).setNumberFormat('DD.MM.YYYY');
   sheet.getRange(2, 2, 1000, 1).setNumberFormat('HH:MM');
+  sheet.getRange(2, 3, 1000, 1).setNumberFormat('HH:MM');
 
-  // Datenvalidierung: Datum (A) – nur erlaubte Wochentage
-  // WOCHENTAG: 1=So, 2=Mo, 3=Di, 4=Mi, 5=Do, 6=Fr, 7=Sa
-  // Erlaubt: 3(Di), 4(Mi), 6(Fr), 7(Sa), 1(So)
-  var weekdayFormula = '=ODER(WOCHENTAG(A2)=3' + sep + ' WOCHENTAG(A2)=4' + sep +
-    ' WOCHENTAG(A2)=6' + sep + ' WOCHENTAG(A2)=7' + sep + ' WOCHENTAG(A2)=1)';
-  var weekdayRule = SpreadsheetApp.newDataValidation()
-    .requireFormulaSatisfied(weekdayFormula)
+  // Spalte C: Formel für späteste Endzeit (Startzeit + 4h), nur zur Validierung
+  sheet.getRange(2, 3, 999, 1)
+    .setFormula('=IF(B2=""' + sep + ' ""' + sep + ' B2 + 4/24)');
+
+  // Datenvalidierung: Datum (A) – Date picker, Wochentag-Prüfung nur im Script
+  var dateRule = SpreadsheetApp.newDataValidation()
+    .requireDate()
     .setAllowInvalid(true)
-    .setHelpText('Nur Di, Mi, Fr, Sa, So erlaubt')
+    .setHelpText('Datum eingeben oder auswählen (Kalender)')
     .build();
-  sheet.getRange(2, 1, 1000, 1).setDataValidation(weekdayRule);
+  sheet.getRange(2, 1, 1000, 1).setDataValidation(dateRule);
 
-  // Datenvalidierung: Team (C) – aus Teams-Blatt, Spalte C (Teamname)
-  var teamsSheet = ss.getSheetByName('Teams');
+  // Datenvalidierung: Team (D) – aus Teams-Blatt, Spalte C (Teamname)
+  var teamsSheet = ss.getSheetByName(CONFIG.SHEET_TEAMS);
   var teamRule = SpreadsheetApp.newDataValidation()
     .requireValueInRange(teamsSheet.getRange('C2:C1000'))
     .setAllowInvalid(false)
     .build();
-  sheet.getRange(2, 3, 1000, 1).setDataValidation(teamRule);
+  sheet.getRange(2, 4, 1000, 1).setDataValidation(teamRule);
 
-  // Datenvalidierung: Heim/Auswärts (D)
+  // Datenvalidierung: Heim/Auswärts (E)
   var haRule = SpreadsheetApp.newDataValidation()
     .requireValueInList(['Heim', 'Auswärts'])
     .setAllowInvalid(false)
     .build();
-  sheet.getRange(2, 4, 1000, 1).setDataValidation(haRule);
+  sheet.getRange(2, 5, 1000, 1).setDataValidation(haRule);
 
-  // Datenvalidierung: Bereich (F) – bei Auswärtsspiel optional
+  // Datenvalidierung: Bereich (G) – bei Auswärtsspiel optional
   var areaRule = SpreadsheetApp.newDataValidation()
     .requireValueInList(CONFIG.AREAS)
     .setAllowInvalid(true)
     .build();
-  sheet.getRange(2, 6, 1000, 1).setDataValidation(areaRule);
+  sheet.getRange(2, 7, 1000, 1).setDataValidation(areaRule);
 
-  // Bedingte Formatierung: Heim = grün
+  // Bedingte Formatierung: Heim = grün (Spalte E)
   var heimRule = SpreadsheetApp.newConditionalFormatRule()
-    .whenFormulaSatisfied('=$D2="Heim"')
+    .whenFormulaSatisfied('=$E2="Heim"')
     .setBackground('#C8E6C9')
-    .setRanges([sheet.getRange('A2:H1000')])
+    .setRanges([sheet.getRange('A2:I1000')])
     .build();
 
   // Bedingte Formatierung: Auswärts = blau
   var auswaertsRule = SpreadsheetApp.newConditionalFormatRule()
-    .whenFormulaSatisfied('=$D2="Auswärts"')
+    .whenFormulaSatisfied('=$E2="Auswärts"')
     .setBackground('#BBDEFB')
-    .setRanges([sheet.getRange('A2:H1000')])
+    .setRanges([sheet.getRange('A2:I1000')])
     .build();
 
-  // Bedingte Formatierung: Validierungsfehler = rot
+  // Bedingte Formatierung: Validierungsfehler = rot (Spalte I)
   var fehlerRule = SpreadsheetApp.newConditionalFormatRule()
-    .whenFormulaSatisfied('=REGEXMATCH($H2' + sep + ' "❌")')
+    .whenFormulaSatisfied('=REGEXMATCH($I2' + sep + ' "❌")')
     .setBackground('#FFCDD2')
-    .setRanges([sheet.getRange('A2:H1000')])
+    .setRanges([sheet.getRange('A2:I1000')])
     .build();
 
   // Bedingte Formatierung: Ersatzspieler-Warnung = orange
   var warnungRule = SpreadsheetApp.newConditionalFormatRule()
-    .whenFormulaSatisfied('=REGEXMATCH($H2' + sep + ' "⚠️")')
+    .whenFormulaSatisfied('=REGEXMATCH($I2' + sep + ' "⚠️")')
     .setBackground('#FFE0B2')
-    .setRanges([sheet.getRange('A2:H1000')])
+    .setRanges([sheet.getRange('A2:I1000')])
     .build();
 
   var rules = sheet.getConditionalFormatRules();
   rules.push(heimRule, auswaertsRule, fehlerRule, warnungRule);
   sheet.setConditionalFormatRules(rules);
 
-  // Kopfzeile schützen
-  protectRange(sheet, 'A1:H1');
+  protectRange(sheet, 'A1:I1');
 
-  // Spaltenbreiten
   sheet.setColumnWidth(1, 110);
   sheet.setColumnWidth(2, 90);
-  sheet.setColumnWidth(3, 180);
-  sheet.setColumnWidth(4, 120);
-  sheet.setColumnWidth(5, 200);
+  sheet.setColumnWidth(3, 110);
+  sheet.setColumnWidth(4, 180);
+  sheet.setColumnWidth(5, 120);
   sheet.setColumnWidth(6, 200);
-  sheet.setColumnWidth(7, 250);
-  sheet.setColumnWidth(8, 350);
+  sheet.setColumnWidth(7, 200);
+  sheet.setColumnWidth(8, 250);
+  sheet.setColumnWidth(9, 350);
 
-  // Kopfzeile fixieren
+  // Spalte C (späteste Endzeit) ausblenden – nur für Validierung
+  sheet.hideColumns(3);
+
   sheet.setFrozenRows(1);
 
-  // Hinweis auf Status-Spalte
-  sheet.getRange(1, 8).setNote(
+  sheet.getRange(1, 9).setNote(
     'Automatisch vom Script befüllt.\n' +
     '❌ = Validierungsfehler\n' +
     '⚠️ = Benachbartes Team spielt am selben Tag'
   );
 
-  // Infotext in Zelle I1 (rechts neben Status)
-  sheet.getRange(1, 9).setValue(
+  sheet.getRange(1, 10).setValue(
     'Hinweise:\n' +
     '- Nur Di/Mi/Fr/Sa/So erlaubt\n' +
     '- Mi: nur "Kleine Halle"\n' +
@@ -313,25 +321,30 @@ function createEingabeSheet(ss, sep) {
     '- Heimspiel: Bereich erforderlich\n' +
     '- Auswärtsspiel: Bereich frei lassen'
   );
-  sheet.getRange(1, 9).setFontSize(9);
-  sheet.getRange(1, 9).setFontColor('#999999');
-  sheet.setColumnWidth(9, 220);
+  sheet.getRange(1, 10).setFontSize(9);
+  sheet.getRange(1, 10).setFontColor('#999999');
+  sheet.setColumnWidth(10, 220);
 }
 
 // -------------------- Belegungsplan-Blatt --------------------
 
 function createBelegungsplanSheet(ss, sep, arrSep) {
-  var sheet = ss.insertSheet('Belegungsplan', 3);
+  var sheet = ss.insertSheet(CONFIG.SHEET_PLAN, 3);
+  var sperrName = CONFIG.SHEET_SPERRUNGEN;
 
-  // Checkbox in A1 zum Umschalten Heim/Alle
-  var checkbox = sheet.getRange('A1');
-  checkbox.insertCheckboxes();
-  checkbox.setValue(false);
-
-  // Label neben Checkbox
+  // Checkbox 1 in A1: Nur Hallenbelegung
+  sheet.getRange('A1').insertCheckboxes();
+  sheet.getRange('A1').setValue(false);
   sheet.getRange('B1').setValue('Nur Hallenbelegung (Heimspiele)');
   sheet.getRange('B1').setFontStyle('italic');
   sheet.getRange('B1').setFontColor('#555555');
+
+  // Checkbox 2 in J1: Sperrungen anzeigen
+  sheet.getRange('J1').insertCheckboxes();
+  sheet.getRange('J1').setValue(false);
+  sheet.getRange('K1').setValue('Sperrungen anzeigen');
+  sheet.getRange('K1').setFontStyle('italic');
+  sheet.getRange('K1').setFontColor('#555555');
 
   // Überschriften Zeile 2
   var headers = ['Datum', 'Tag', 'Startzeit', 'Bereich', 'Team', 'H/A', 'Gegner', 'Kommentar', 'Status'];
@@ -340,19 +353,39 @@ function createBelegungsplanSheet(ss, sep, arrSep) {
     .setFontWeight('bold')
     .setBackground('#E8E8E8');
 
-  // QUERY-Formel in A3: zeigt alle Spiele oder nur Heimspiele je nach Checkbox
-  // Die Formel erzeugt eine zusätzliche Spalte (Col9) mit dem Wochentag
-  // arrSep = Array-Spaltentrenner (\ für DE, , für EN)
-  // sep    = Funktionsargument-Trenner (; für DE, , für EN)
-  var formula = '=IF(A1' + sep +
-    'QUERY({Eingabe!A2:H' + arrSep + ' ARRAYFORMULA(TEXT(Eingabe!A2:A' + sep + '"TTT"))}' + sep +
-    '"SELECT Col1, Col9, Col2, Col6, Col3, Col4, Col5, Col7, Col8 ' +
-    'WHERE Col1 IS NOT NULL AND Col4=\'Heim\' ' +
-    'ORDER BY Col1, Col2"' + sep + ' 1)' + sep +
-    'QUERY({Eingabe!A2:H' + arrSep + ' ARRAYFORMULA(TEXT(Eingabe!A2:A' + sep + '"TTT"))}' + sep +
-    '"SELECT Col1, Col9, Col2, Col6, Col3, Col4, Col5, Col7, Col8 ' +
-    'WHERE Col1 IS NOT NULL ' +
-    'ORDER BY Col1, Col2"' + sep + ' 1)' +
+  // QUERY-Formel in A3 mit LET:
+  //   ea = alle Eingabe-Einträge
+  //   eh = nur Heim-Einträge
+  //   sa = Sperrungen (als Pseudo-Einträge formatiert)
+  //   basis = IF(A1; eh; ea)
+  //   Ergebnis = IF(J1; {basis; sa}; basis) mit IFERROR-Fallback
+
+  var qEingabe = 'QUERY({Eingabe!A2:I' + arrSep +
+    ' ARRAYFORMULA(TEXT(Eingabe!A2:A' + sep + '"TTT"))}' + sep;
+
+  var ea = qEingabe +
+    '"SELECT Col1, Col10, Col2, Col7, Col4, Col5, Col6, Col8, Col9 ' +
+    'WHERE Col1 IS NOT NULL ORDER BY Col1, Col2"' + sep + ' 0)';
+
+  var eh = qEingabe +
+    '"SELECT Col1, Col10, Col2, Col7, Col4, Col5, Col6, Col8, Col9 ' +
+    'WHERE Col1 IS NOT NULL AND Col5=\'Heim\' ORDER BY Col1, Col2"' + sep + ' 0)';
+
+  var sa = 'QUERY({\'' + sperrName + '\'!A2:E' + arrSep +
+    ' ARRAYFORMULA(TEXT(\'' + sperrName + '\'!A2:A' + sep + '"TTT"))' + arrSep +
+    ' ARRAYFORMULA(IF(\'' + sperrName + '\'!B2:B=""' + sep +
+    ' "ganztägig"' + sep +
+    ' TEXT(\'' + sperrName + '\'!B2:B' + sep + '"HH:MM")&" - "&' +
+    'TEXT(\'' + sperrName + '\'!C2:C' + sep + '"HH:MM")))}' + sep +
+    '"SELECT Col1, Col6, Col2, Col4, \'🔒 GESPERRT\', \'\', Col5, Col7, \'Sperrung\' ' +
+    'WHERE Col1 IS NOT NULL ORDER BY Col1, Col2"' + sep + ' 0)';
+
+  var formula = '=LET(' +
+    'ea' + sep + ' ' + ea + sep +
+    'eh' + sep + ' ' + eh + sep +
+    'sa' + sep + ' ' + sa + sep +
+    'basis' + sep + ' IF(A1' + sep + ' eh' + sep + ' ea)' + sep +
+    'IF(J1' + sep + ' IFERROR({basis' + sep + ' sa}' + sep + ' basis)' + sep + ' basis)' +
     ')';
 
   sheet.getRange(3, 1).setFormula(formula);
@@ -382,11 +415,17 @@ function createBelegungsplanSheet(ss, sep, arrSep) {
     .setRanges([sheet.getRange('A3:I1000')])
     .build();
 
+  // Bedingte Formatierung: Sperrungen = grau
+  var sperrRule = SpreadsheetApp.newConditionalFormatRule()
+    .whenFormulaSatisfied('=REGEXMATCH($I3' + sep + ' "Sperrung")')
+    .setBackground('#E0E0E0')
+    .setRanges([sheet.getRange('A3:I1000')])
+    .build();
+
   var rules = sheet.getConditionalFormatRules();
-  rules.push(heimRule, auswaertsRule, warnungRule);
+  rules.push(heimRule, auswaertsRule, warnungRule, sperrRule);
   sheet.setConditionalFormatRules(rules);
 
-  // Spaltenbreiten
   sheet.setColumnWidth(1, 110);
   sheet.setColumnWidth(2, 50);
   sheet.setColumnWidth(3, 90);
@@ -397,16 +436,11 @@ function createBelegungsplanSheet(ss, sep, arrSep) {
   sheet.setColumnWidth(8, 250);
   sheet.setColumnWidth(9, 300);
 
-  // Status-Spalte (I) ausblenden – wird nur für bedingte Formatierung gebraucht
   sheet.hideColumns(9);
-
-  // Zeilen 1-2 fixieren (Checkbox + Überschriften)
   sheet.setFrozenRows(2);
 
-  // Schutz für Kopfbereich
   protectRange(sheet, 'A1:I2');
 
-  // Hinweis
   sheet.getRange(2, 9).setNote(
     'Diese Spalte ist ausgeblendet.\n' +
     'Sie enthält den Status für die farbliche Markierung.'
@@ -415,34 +449,36 @@ function createBelegungsplanSheet(ss, sep, arrSep) {
 
 // ==================== VALIDIERUNG ====================
 
-function onEdit(e) {
+function handleEdit(e) {
   var sheet = e.range.getSheet();
-  if (sheet.getName() !== 'Eingabe') return;
-  if (e.range.getRow() < 2) return;
+  var name = sheet.getName();
 
-  var col = e.range.getColumn();
-  // Relevante Spalten: Datum(1), Startzeit(2), Team(3), H/A(4), Bereich(6)
-  var relevantCols = [1, 2, 3, 4, 6];
-  if (relevantCols.indexOf(col) === -1) return;
-
-  validateAllEntries();
+  if (name === CONFIG.SHEET_EINGABE) {
+    if (e.range.getRow() < 2) return;
+    var col = e.range.getColumn();
+    var relevantCols = [1, 2, 3, 4, 5, 7]; // Datum, Startzeit, Endzeit(Formel), Team, H/A, Bereich
+    if (relevantCols.indexOf(col) === -1 && col !== 6 && col !== 8) return;
+    validateAllEntries();
+  } else if (name === CONFIG.SHEET_SPERRUNGEN) {
+    if (e.range.getRow() < 2) return;
+    validateAllEntries();
+  }
 }
 
 function validateAllEntries() {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
-  var sheet = ss.getSheetByName('Eingabe');
+  var sheet = ss.getSheetByName(CONFIG.SHEET_EINGABE);
   if (!sheet) return;
 
   var lastRow = sheet.getLastRow();
   if (lastRow < 2) return;
 
-  var data = sheet.getRange(2, 1, lastRow - 1, 8).getValues();
+  // Spalten: A=Datum, B=Startzeit, C=spätesteEndzeit, D=Team, E=H/A, F=Gegner, G=Bereich, H=Kommentar, I=Status
+  var data = sheet.getRange(2, 1, lastRow - 1, 9).getValues();
 
-  // Teams und Sperrungen vorab lesen
   var teams = readTeams(ss);
   var sperrungen = readSperrungen(ss);
 
-  // Sammle alle Fehler pro Zeile
   var statusMessages = {};
   for (var i = 0; i < data.length; i++) {
     statusMessages[i] = [];
@@ -452,16 +488,18 @@ function validateAllEntries() {
   for (var i = 0; i < data.length; i++) {
     var row = data[i];
     var datum = row[0];
-    var team = row[2];
-    var ha = row[3];
-    var bereich = row[5];
+    var startzeit = row[1];
+    var endzeit = row[2];
+    var team = row[3];
+    var ha = row[4];
+    var bereich = row[6];
 
     if (!isValidDate(datum)) continue;
 
     var weekday = datum.getDay();
     var dateKey = datumToKey(datum);
 
-    // 1a. Wochentag prüfen (nur für Heimspiele relevant)
+    // 1a. Wochentag prüfen (nur für Heimspiele)
     if (ha === 'Heim' && CONFIG.ALLOWED_WEEKDAYS.indexOf(weekday) === -1) {
       statusMessages[i].push('❌ Nur Di, Mi, Fr, Sa, So erlaubt');
     }
@@ -476,11 +514,10 @@ function validateAllEntries() {
       var areasOnDate = {};
       for (var j = 0; j < data.length; j++) {
         if (isValidDate(data[j][0]) && datumToKey(data[j][0]) === dateKey &&
-            data[j][3] === 'Heim' && data[j][5]) {
-          areasOnDate[data[j][5]] = true;
+            data[j][4] === 'Heim' && data[j][6]) {
+          areasOnDate[data[j][6]] = true;
         }
       }
-      // Aktuelle Zeile ist bereits enthalten (data[j] includes current row)
       var uniqueCount = Object.keys(areasOnDate).length;
       if (uniqueCount > CONFIG.MAX_AREAS_TUE_FRI) {
         statusMessages[i].push('❌ Di/Fr: max. ' + CONFIG.MAX_AREAS_TUE_FRI +
@@ -493,76 +530,80 @@ function validateAllEntries() {
       for (var k = 0; k < data.length; k++) {
         if (k !== i && isValidDate(data[k][0]) &&
             datumToKey(data[k][0]) === dateKey &&
-            data[k][3] === 'Heim' &&
-            data[k][5] === bereich) {
+            data[k][4] === 'Heim' &&
+            data[k][6] === bereich) {
           statusMessages[i].push('❌ "' + bereich + '" an diesem Tag bereits belegt');
           break;
         }
       }
     }
 
-    // 1e. Sperrungen prüfen
-    for (var s = 0; s < sperrungen.length; s++) {
-      var sDatum = sperrungen[s].datum;
-      var sBereich = sperrungen[s].bereich;
-      var sGrund = sperrungen[s].grund;
-      if (isValidDate(sDatum) && datumToKey(sDatum) === dateKey) {
-        var blocked = false;
-        if (sBereich === 'Alle') {
-          blocked = true;
-        } else if (bereich && sBereich === bereich) {
-          blocked = true;
-        }
-        if (blocked) {
+    // 1e. Sperrungen prüfen (ganztägig und zeitbasiert)
+    if (ha === 'Heim' && bereich) {
+      for (var s = 0; s < sperrungen.length; s++) {
+        var sDatum = sperrungen[s].datum;
+        if (!isValidDate(sDatum) || datumToKey(sDatum) !== dateKey) continue;
+        if (sperrungen[s].bereich !== 'Alle' && sperrungen[s].bereich !== bereich) continue;
+
+        var sStart = sperrungen[s].startzeit;
+        var sEnd = sperrungen[s].endzeit;
+
+        if (isValidTime(sStart) && isValidTime(sEnd)) {
+          // Zeitbasierte Sperrung: prüfe Überlappung
+          if (isValidTime(startzeit) && isValidTime(endzeit)) {
+            if (startzeit < sEnd && endzeit > sStart) {
+              var msg = '❌ Überschneidung mit Sperrung';
+              if (sperrungen[s].grund) msg += ': ' + sperrungen[s].grund;
+              statusMessages[i].push(msg);
+            }
+          }
+        } else {
+          // Ganztägige Sperrung
           var msg = '❌ ';
-          if (sBereich === 'Alle') {
+          if (sperrungen[s].bereich === 'Alle') {
             msg += 'Tag gesperrt';
           } else {
-            msg += '"' + sBereich + '" gesperrt';
+            msg += '"' + sperrungen[s].bereich + '" gesperrt';
           }
-          if (sGrund) msg += ': ' + sGrund;
+          if (sperrungen[s].grund) msg += ': ' + sperrungen[s].grund;
           statusMessages[i].push(msg);
         }
       }
     }
   }
 
-  // --- 2. Benachbarte Teams prüfen (gleiche Gruppe, Rangunterschied 1) ---
+  // --- 2. Benachbarte Teams prüfen ---
   var adjacentMessages = checkAdjacentTeams(data, teams);
 
-  // --- 3. Status-Meldungen schreiben ---
+  // --- 3. Status-Meldungen schreiben (Spalte I) ---
   for (var i = 0; i < data.length; i++) {
     var allMessages = statusMessages[i].slice();
 
-    // Adjacent-Warnungen anfügen
     if (adjacentMessages[i]) {
       allMessages = allMessages.concat(adjacentMessages[i]);
     }
 
     var statusText = allMessages.join(' | ');
-    sheet.getRange(i + 2, 8).setValue(statusText);
+    sheet.getRange(i + 2, 9).setValue(statusText);
   }
 }
 
 // -------------------- Hilfsfunktionen Validierung --------------------
 
 function checkAdjacentTeams(data, teams) {
-  var messages = {}; // index -> [message1, message2, ...]
+  var messages = {};
 
-  // Gruppiere Einträge nach Datum
   var entriesByDate = {};
   for (var i = 0; i < data.length; i++) {
-    if (!isValidDate(data[i][0]) || !data[i][2]) continue;
+    if (!isValidDate(data[i][0]) || !data[i][3]) continue; // Team in Spalte D (Index 3)
     var key = datumToKey(data[i][0]);
     if (!entriesByDate[key]) entriesByDate[key] = [];
-    entriesByDate[key].push({ index: i, teamName: data[i][2] });
+    entriesByDate[key].push({ index: i, teamName: data[i][3] });
   }
 
-  // Für jedes Datum: Teams gleicher Gruppe mit Rangunterschied 1 finden
   for (var dateKey in entriesByDate) {
     var entries = entriesByDate[dateKey];
 
-    // Nach Gruppe gruppieren
     var byGroup = {};
     for (var e = 0; e < entries.length; e++) {
       var teamName = entries[e].teamName;
@@ -577,7 +618,6 @@ function checkAdjacentTeams(data, teams) {
       });
     }
 
-    // In jeder Gruppe nach benachbarten Rängen suchen
     for (var gruppe in byGroup) {
       var gEntries = byGroup[gruppe];
       for (var a = 0; a < gEntries.length; a++) {
@@ -606,19 +646,18 @@ function checkAdjacentTeams(data, teams) {
 // -------------------- Daten lesen --------------------
 
 function readTeams(ss) {
-  var sheet = ss.getSheetByName('Teams');
+  var sheet = ss.getSheetByName(CONFIG.SHEET_TEAMS);
   if (!sheet) return {};
 
   var lastRow = sheet.getLastRow();
   if (lastRow < 2) return {};
 
-  // Spalten: A=Rang, B=Gruppe, C=Teamname, D=Kurzname
   var raw = sheet.getRange(2, 1, lastRow - 1, 4).getValues();
   var teams = {};
   for (var i = 0; i < raw.length; i++) {
     var rang = raw[i][0];
     var gruppe = raw[i][1];
-    var teamname = raw[i][2]; // per Formel generiert
+    var teamname = raw[i][2];
     if (rang && gruppe && teamname) {
       teams[teamname] = { rang: rang, gruppe: gruppe };
     }
@@ -627,20 +666,23 @@ function readTeams(ss) {
 }
 
 function readSperrungen(ss) {
-  var sheet = ss.getSheetByName('Sperrungen');
+  var sheet = ss.getSheetByName(CONFIG.SHEET_SPERRUNGEN);
   if (!sheet) return [];
 
   var lastRow = sheet.getLastRow();
   if (lastRow < 2) return [];
 
-  var raw = sheet.getRange(2, 1, lastRow - 1, 3).getValues();
+  // Spalten: A=Datum, B=Startzeit, C=Endzeit, D=Bereich, E=Grund
+  var raw = sheet.getRange(2, 1, lastRow - 1, 5).getValues();
   var sperrungen = [];
   for (var i = 0; i < raw.length; i++) {
     if (raw[i][0]) {
       sperrungen.push({
         datum: raw[i][0],
-        bereich: raw[i][1],
-        grund: raw[i][2]
+        startzeit: raw[i][1],
+        endzeit: raw[i][2],
+        bereich: raw[i][3],
+        grund: raw[i][4]
       });
     }
   }
@@ -651,6 +693,10 @@ function readSperrungen(ss) {
 
 function isValidDate(d) {
   return d instanceof Date && !isNaN(d.getTime());
+}
+
+function isValidTime(t) {
+  return typeof t === 'number' && t >= 0 && t < 1;
 }
 
 function datumToKey(datum) {
@@ -667,16 +713,14 @@ function protectRange(sheet, rangeA1) {
 }
 
 function createTrigger() {
-  // Bestehende Trigger für diese Funktion entfernen
   var triggers = ScriptApp.getProjectTriggers();
   triggers.forEach(function(t) {
-    if (t.getHandlerFunction() === 'onEdit') {
+    if (t.getHandlerFunction() === 'handleEdit') {
       ScriptApp.deleteTrigger(t);
     }
   });
 
-  // Neuen installierbaren Trigger erstellen
-  ScriptApp.newTrigger('onEdit')
+  ScriptApp.newTrigger('handleEdit')
     .forSpreadsheet(SpreadsheetApp.getActiveSpreadsheet())
     .onEdit()
     .create();
@@ -700,8 +744,8 @@ function showPublishHelp() {
     'Web-Veröffentlichung',
     'So veröffentlichen Sie den Belegungsplan:\n\n' +
     '1. Datei → Freigeben → Für das Web veröffentlichen\n' +
-    '2. Blatt "Belegungsplan" auswählen\n' +
-    '3. "Gesamtes Dokument" → "Belegungsplan"\n' +
+    '2. Blatt "' + CONFIG.SHEET_PLAN + '" auswählen\n' +
+    '3. "Gesamtes Dokument" → "' + CONFIG.SHEET_PLAN + '"\n' +
     '4. "Veröffentlichen" klicken\n' +
     '5. Den generierten Link kopieren und teilen\n\n' +
     'Tipp: Vor dem Veröffentlichen die Checkbox in A1 ' +

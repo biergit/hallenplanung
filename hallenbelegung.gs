@@ -788,11 +788,9 @@ function protectRange(sheet, rangeA1) {
 }
 
 function createTrigger() {
-  var triggers = ScriptApp.getProjectTriggers();
-  triggers.forEach(function(t) {
-    if (t.getHandlerFunction() === 'handleEdit') {
-      ScriptApp.deleteTrigger(t);
-    }
+  // Alle bestehenden Trigger löschen (auch Altlasten aus früheren Versionen)
+  ScriptApp.getProjectTriggers().forEach(function(t) {
+    ScriptApp.deleteTrigger(t);
   });
 
   ScriptApp.newTrigger('handleEdit')

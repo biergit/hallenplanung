@@ -274,7 +274,6 @@ function createEingabeSheet(ss, sep) {
   sheet.getRange(2, 3, 1000, 1).setNumberFormat('HH:MM');
 
   // Spalte C: späteste Endzeit (wird per Script beim Eintrag der Startzeit berechnet)
-  sheet.getRange(2, 3, 1000, 1).setNumberFormat('HH:MM');
   sheet.getRange(1, 3).setNote('Wird automatisch beim Eintragen der Startzeit berechnet (Startzeit + Spieldauer aus Setup).');
 
   // Date picker
@@ -495,6 +494,7 @@ function handleEdit(e) {
       var h = Math.floor(rawVal);
       var m = Math.round((rawVal - h) * 60);
       e.range.setValue((h * 60 + m) / 1440);
+      e.range.setNumberFormat('HH:MM');
     }
     computeEndzeit(e.range);
   }
@@ -519,7 +519,7 @@ function computeEndzeit(startCell) {
   var startVal = startCell.getValue();
   var frac = timeToFraction(startVal);
   if (frac !== null) {
-    sheet.getRange(row, 3).setValue(frac + spieldauer / 24);
+    sheet.getRange(row, 3).setValue(frac + spieldauer / 24).setNumberFormat('HH:MM');
   } else {
     sheet.getRange(row, 3).clearContent();
   }

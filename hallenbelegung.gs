@@ -645,6 +645,7 @@ function validateAllEntries() {
       }
     }
   }
+  }
 
   // 2. Benachbarte Teams
   var adjacentMessages = checkAdjacentTeams(data, teams);

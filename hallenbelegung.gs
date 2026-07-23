@@ -205,7 +205,8 @@ function _seedEingabe(ss) {
     var row = SEED_EINGABE[i];
     var datum = _parseDate(row[0]);
     var startzeit = _parseTime(row[1]);
-    data.push([datum, startzeit, '', row[3], row[4], row[5], row[6], row[7], '']);
+    var endzeit = _parseTime(row[2]);
+    data.push([datum, startzeit, endzeit, row[3], row[4], row[5], row[6], row[7], '']);
   }
   if (data.length > 0) {
     sheet.getRange(2, 1, data.length, 9).setValues(data);

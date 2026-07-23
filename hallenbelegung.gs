@@ -47,7 +47,7 @@ var CONFIG = {
   SHEET_PLAN: 'Hallen/Spielplan',
 
   // Standard-Spieldauer in Stunden (konfigurierbar in Setup!F1)
-  GAME_DURATION_HOURS: 4
+  GAME_DURATION_HOURS: 2.5
 };
 // --- SEED DATA BEGIN ---
 var SEED_SETUP = JSON.parse("[]");
@@ -188,14 +188,19 @@ function _seedSetup(ss) {
   var sheet = ss.getSheetByName(CONFIG.SHEET_SETUP);
   if (!sheet) return;
 
-  var data = [];
+  var abData = [];
+  var hData = [];
   for (var i = 0; i < SEED_SETUP.length; i++) {
-    data.push([parseInt(SEED_SETUP[i][0]), SEED_SETUP[i][1]]);
+    abData.push([parseInt(SEED_SETUP[i][0]), SEED_SETUP[i][1]]);
+    hData.push([SEED_SETUP[i][4] || '']);
   }
-  if (data.length > 0) {
-    var range = sheet.getRange(2, 1, data.length, 2);
-    range.clearDataValidations();
-    range.setValues(data);
+  if (abData.length > 0) {
+    var abRange = sheet.getRange(2, 1, abData.length, 2);
+    abRange.clearDataValidations();
+    abRange.setValues(abData);
+  }
+  if (hData.length > 0) {
+    sheet.getRange(2, 8, hData.length, 1).setValues(hData);
   }
 }
 
@@ -206,10 +211,10 @@ function _seedEingabe(ss) {
   var data = [];
   for (var i = 0; i < SEED_EINGABE.length; i++) {
     var row = SEED_EINGABE[i];
-    var datum = _parseDate(row[0]);
-    var startzeit = _parseTime(row[1]);
-    var endzeit = _parseTime(row[2]);
-    data.push([datum, startzeit, endzeit, row[3], row[4], row[5], row[6], row[7], '']);
+    var datum = _parseDate(row[2]);
+    var startzeit = _parseTime(row[3]);
+    var endzeit = _parseTime(row[4]);
+    data.push([row[0], row[1], datum, startzeit, endzeit, row[5], row[6], row[7], '']);
   }
   if (data.length > 0) {
     var range = sheet.getRange(2, 1, data.length, 9);
@@ -273,11 +278,17 @@ function createSetupSheet(ss, sep) {
     .setBackground('#E8E8E8');
 
   // Spieldauer-Konfiguration in E1/F1
-  sheet.getRange('E1').setValue('Spieldauer (h):');
+  sheet.getRange('E1').setValue('Standard-Spieldauer (h):');
   sheet.getRange('E1').setFontWeight('bold');
   sheet.getRange('F1').setValue(CONFIG.GAME_DURATION_HOURS);
   sheet.getRange('F1').setNumberFormat('0.0');
-  sheet.getRange('F1').setNote('Standard-Spieldauer in Stunden. Wird für die Berechnung der spätesten Endzeit verwendet.');
+  sheet.getRange('F1').setNote('Standard-Spieldauer für alle Teams. Kann pro Team in Spalte H überschrieben werden.');
+
+  // Spalte H: Team-spezifische Spieldauer
+  sheet.getRange(1, 8).setValue('Spieldauer (h)');
+  sheet.getRange(1, 8).setFontWeight('bold').setBackground('#E8E8E8');
+  sheet.getRange(1, 8).setNote('Optionale team-spezifische Spieldauer in Stunden. Leer lassen für Standard aus F1.');
+  sheet.getRange(2, 8, 999, 1).setNumberFormat('0.0');
 
   sheet.getRange(1, 7).setValue('Gruppenliste');
   sheet.getRange(1, 7).setFontWeight('bold');
@@ -335,7 +346,8 @@ function createSetupSheet(ss, sep) {
   sheet.setColumnWidth(10, 500);
 
   var instructions = [
-    ['SPIELDAUER ÄNDERN:', 'Wert in Zelle F1 ändern (z.B. 4.5 für 4h 30min).'],
+    ['SPIELDAUER:', 'Standard in F1 (z.B. 2.5 für 2h 30min).'],
+    ['', 'Pro Team in Spalte H überschreibbar.'],
     ['', 'Gilt nur für neue Einträge – bestehende Endzeiten bleiben unverändert.'],
     ['', ''],
     ['STARTZEIT EINGEBEN:', 'Einfach "12" statt "12:00" eingeben – das Script wandelt es um.'],
@@ -464,20 +476,18 @@ function upgradeSperrungenSheet(ss, sep) {
 function createEingabeSheet(ss, sep) {
   var sheet = ss.insertSheet(CONFIG.SHEET_EINGABE, 2);
 
-  // A=Datum, B=Startzeit, C=späteste Endzeit (Formel), D=Team, E=Heim/Auswärts,
-  // F=Gegner, G=Bereich, H=Kommentar, I=Status
-  var headers = ['Datum', 'Startzeit', 'späteste Endzeit', 'Team', 'Heim/Auswärts', 'Gegner', 'Bereich', 'Kommentar', '\u26A0\uFE0F Status'];
+  // Spalten: A=Team, B=Gegner, C=Datum, D=Startzeit, E=späteste Endzeit, F=Heim/Auswärts, G=Bereich, H=Kommentar, I=Status
+  var headers = ['Team', 'Gegner', 'Datum', 'Startzeit', 'späteste Endzeit', 'Heim/Auswärts', 'Bereich', 'Kommentar', '\u26A0\uFE0F Status'];
   sheet.getRange(1, 1, 1, 9)
     .setValues([headers])
     .setFontWeight('bold')
     .setBackground('#E8E8E8');
 
-  sheet.getRange(2, 1, 1000, 1).setNumberFormat('DD.MM.YYYY');
-  sheet.getRange(2, 2, 1000, 1).setNumberFormat('HH:MM');
-  sheet.getRange(2, 3, 1000, 1).setNumberFormat('HH:MM');
+  sheet.getRange(2, 3, 1000, 1).setNumberFormat('DD.MM.YYYY');
+  sheet.getRange(2, 4, 1000, 1).setNumberFormat('HH:MM');
+  sheet.getRange(2, 5, 1000, 1).setNumberFormat('HH:MM');
 
-  // Spalte C: späteste Endzeit (wird per Script beim Eintrag der Startzeit berechnet)
-  sheet.getRange(1, 3).setNote('Wird automatisch beim Eintragen der Startzeit berechnet (Startzeit + Spieldauer aus Setup).');
+  sheet.getRange(1, 5).setNote('Wird automatisch beim Eintragen der Startzeit berechnet (Startzeit + team-spezifische Spieldauer aus Setup).');
 
   // Date picker
   var dateRule = SpreadsheetApp.newDataValidation()
@@ -485,7 +495,7 @@ function createEingabeSheet(ss, sep) {
     .setAllowInvalid(true)
     .setHelpText('Datum eingeben oder auswählen (Kalender)')
     .build();
-  sheet.getRange(2, 1, 1000, 1).setDataValidation(dateRule);
+  sheet.getRange(2, 3, 1000, 1).setDataValidation(dateRule);
 
   // Team-Dropdown aus Setup-Blatt
   var setupSheet = ss.getSheetByName(CONFIG.SHEET_SETUP);
@@ -493,14 +503,14 @@ function createEingabeSheet(ss, sep) {
     .requireValueInRange(setupSheet.getRange('C2:C1000'))
     .setAllowInvalid(false)
     .build();
-  sheet.getRange(2, 4, 1000, 1).setDataValidation(teamRule);
+  sheet.getRange(2, 1, 1000, 1).setDataValidation(teamRule);
 
   // Heim/Auswärts
   var haRule = SpreadsheetApp.newDataValidation()
     .requireValueInList(['Heim', 'Auswärts'])
     .setAllowInvalid(false)
     .build();
-  sheet.getRange(2, 5, 1000, 1).setDataValidation(haRule);
+  sheet.getRange(2, 6, 1000, 1).setDataValidation(haRule);
 
   // Bereich
   var areaRule = SpreadsheetApp.newDataValidation()
@@ -511,13 +521,13 @@ function createEingabeSheet(ss, sep) {
 
   // Bedingte Formatierungen
   var heimRule = SpreadsheetApp.newConditionalFormatRule()
-    .whenFormulaSatisfied('=$E2="Heim"')
+    .whenFormulaSatisfied('=$F2="Heim"')
     .setBackground('#C8E6C9')
     .setRanges([sheet.getRange('A2:I1000')])
     .build();
 
   var auswaertsRule = SpreadsheetApp.newConditionalFormatRule()
-    .whenFormulaSatisfied('=$E2="Auswärts"')
+    .whenFormulaSatisfied('=$F2="Auswärts"')
     .setBackground('#BBDEFB')
     .setRanges([sheet.getRange('A2:I1000')])
     .build();
@@ -540,12 +550,12 @@ function createEingabeSheet(ss, sep) {
 
   protectRange(sheet, 'A1:I1');
 
-  sheet.setColumnWidth(1, 110);
-  sheet.setColumnWidth(2, 90);
+  sheet.setColumnWidth(1, 180);
+  sheet.setColumnWidth(2, 200);
   sheet.setColumnWidth(3, 110);
-  sheet.setColumnWidth(4, 180);
-  sheet.setColumnWidth(5, 120);
-  sheet.setColumnWidth(6, 200);
+  sheet.setColumnWidth(4, 90);
+  sheet.setColumnWidth(5, 110);
+  sheet.setColumnWidth(6, 120);
   sheet.setColumnWidth(7, 200);
   sheet.setColumnWidth(8, 250);
   sheet.setColumnWidth(9, 350);
@@ -603,12 +613,12 @@ function createBelegungsplanSheet(ss, sep, arrSep) {
   // dummy: 9 leere Werte, sortiert ans Ende
 
   var qBase = 'QUERY({Eingabe!A2:I' + arrSep +
-    ' ARRAYFORMULA(TEXT(Eingabe!A2:A' + sep + '"ddd"))}' + sep;
+    ' ARRAYFORMULA(TEXT(Eingabe!C2:C' + sep + '"ddd"))}' + sep;
 
-  var sqlHeim = '"SELECT Col1, Col10, Col2, Col7, Col4, Col5, Col6, Col8, Col9 ' +
-    'WHERE Col1 IS NOT NULL AND Col5=\'Heim\'"';
-  var sqlAll = '"SELECT Col1, Col10, Col2, Col7, Col4, Col5, Col6, Col8, Col9 ' +
-    'WHERE Col1 IS NOT NULL"';
+  var sqlHeim = '"SELECT Col3, Col10, Col4, Col7, Col1, Col6, Col2, Col8, Col9 ' +
+    'WHERE Col3 IS NOT NULL AND Col6=\'Heim\'"';
+  var sqlAll = '"SELECT Col3, Col10, Col4, Col7, Col1, Col6, Col2, Col8, Col9 ' +
+    'WHERE Col3 IS NOT NULL"';
 
   var QH = qBase + sqlHeim + sep + ' 0)';
   var QA = qBase + sqlAll + sep + ' 0)';
@@ -657,7 +667,7 @@ function createBelegungsplanSheet(ss, sep, arrSep) {
     .build();
 
   var sperrRule = SpreadsheetApp.newConditionalFormatRule()
-    .whenFormulaSatisfied('=REGEXMATCH($I4' + sep + ' "Sperrung")')
+    .whenFormulaSatisfied('=REGEXMATCH($I4' + sep + ' "gesperrt")')
     .setBackground('#E0E0E0')
     .setRanges([sheet.getRange('A4:I1000')])
     .build();
@@ -690,8 +700,8 @@ function handleEdit(e) {
     if (e.range.getRow() < 2) return;
     var col = e.range.getColumn();
 
-  // Spalte B (Startzeit): "12" → 12:00 konvertieren + Endzeit berechnen
-  if (col === 2) {
+  // Spalte D (Startzeit): "12" → 12:00 konvertieren + Endzeit berechnen
+  if (col === 4) {
     var rawVal = e.range.getValue();
     if (typeof rawVal === 'number' && rawVal >= 1 && rawVal < 24) {
       var h = Math.floor(rawVal);
@@ -702,8 +712,8 @@ function handleEdit(e) {
     computeEndzeit(e.range);
   }
 
-    var relevantCols = [1, 2, 3, 4, 5, 7];
-    if (relevantCols.indexOf(col) === -1 && col !== 6 && col !== 8) return;
+    var relevantCols = [3, 4, 5, 1, 6, 7];
+    if (relevantCols.indexOf(col) === -1 && col !== 2 && col !== 8) return;
     validateAllEntries();
   } else if (name === CONFIG.SHEET_SPERRUNGEN) {
     if (e.range.getRow() < 2) return;
@@ -715,16 +725,18 @@ function computeEndzeit(startCell) {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
   var sheet = startCell.getSheet();
   var row = startCell.getRow();
-  var setupSheet = ss.getSheetByName(CONFIG.SHEET_SETUP);
-  if (!setupSheet) return;
-  var spieldauer = setupSheet.getRange('F1').getValue();
-  if (typeof spieldauer !== 'number' || spieldauer <= 0) spieldauer = CONFIG.GAME_DURATION_HOURS;
+  var team = sheet.getRange(row, 1).getValue();
+  var teams = readTeams(ss);
+  var spieldauer = CONFIG.GAME_DURATION_HOURS;
+  if (teams[team] && typeof teams[team].spieldauer === 'number' && teams[team].spieldauer > 0) {
+    spieldauer = teams[team].spieldauer;
+  }
   var startVal = startCell.getValue();
   var frac = timeToFraction(startVal);
   if (frac !== null) {
-    sheet.getRange(row, 3).setValue(frac + spieldauer / 24).setNumberFormat('HH:MM');
+    sheet.getRange(row, 5).setValue(frac + spieldauer / 24).setNumberFormat('HH:MM');
   } else {
-    sheet.getRange(row, 3).clearContent();
+    sheet.getRange(row, 5).clearContent();
   }
 }
 
@@ -748,10 +760,10 @@ function validateAllEntries() {
 
   for (var i = 0; i < data.length; i++) {
     var row = data[i];
-    var datum = row[0];
-    var startzeit = row[1];
-    var endzeit = row[2];
-    var ha = row[4];
+    var datum = row[2];
+    var startzeit = row[3];
+    var endzeit = row[4];
+    var ha = row[5];
     var bereich = row[6];
 
     if (!isValidDate(datum)) continue;
@@ -778,8 +790,8 @@ function validateAllEntries() {
     if ((weekday === 2 || weekday === 5) && ha === 'Heim' && bereich) {
       var areasOnDate = {};
       for (var j = 0; j < data.length; j++) {
-        if (isValidDate(data[j][0]) && datumToKey(data[j][0]) === dateKey &&
-            data[j][4] === 'Heim' && data[j][6]) {
+        if (isValidDate(data[j][2]) && datumToKey(data[j][2]) === dateKey &&
+            data[j][5] === 'Heim' && data[j][6]) {
           areasOnDate[data[j][6]] = true;
         }
       }
@@ -792,14 +804,14 @@ function validateAllEntries() {
     // 1d. Doppelbuchung prüfen
     if (ha === 'Heim' && bereich) {
       for (var k = 0; k < data.length; k++) {
-          if (k !== i && isValidDate(data[k][0]) &&
-              datumToKey(data[k][0]) === dateKey &&
-              data[k][4] === 'Heim' &&
+          if (k !== i && isValidDate(data[k][2]) &&
+              datumToKey(data[k][2]) === dateKey &&
+              data[k][5] === 'Heim' &&
               data[k][6] === bereich) {
 
             if (weekday === 6 || weekday === 0) {
-              var otherStart = data[k][1];
-              var otherEnd = data[k][2];
+              var otherStart = data[k][3];
+              var otherEnd = data[k][4];
               var s1 = timeToFraction(startzeit), e1 = timeToFraction(endzeit);
               var s2 = timeToFraction(otherStart), e2 = timeToFraction(otherEnd);
               if (s1 !== null && e1 !== null && s2 !== null && e2 !== null) {
@@ -875,10 +887,10 @@ function checkAdjacentTeams(data, teams) {
 
   var entriesByDate = {};
   for (var i = 0; i < data.length; i++) {
-    if (!isValidDate(data[i][0]) || !data[i][3]) continue;
-    var key = datumToKey(data[i][0]);
+    if (!isValidDate(data[i][2]) || !data[i][0]) continue;
+    var key = datumToKey(data[i][2]);
     if (!entriesByDate[key]) entriesByDate[key] = [];
-    entriesByDate[key].push({ index: i, teamName: data[i][3] });
+    entriesByDate[key].push({ index: i, teamName: data[i][0] });
   }
 
   for (var dateKey in entriesByDate) {
@@ -925,11 +937,16 @@ function readTeams(ss) {
   var lastRow = sheet.getLastRow();
   if (lastRow < 2) return {};
 
-  var raw = sheet.getRange(2, 1, lastRow - 1, 4).getValues();
+  var raw = sheet.getRange(2, 1, lastRow - 1, 8).getValues();
+  var defaultDuration = sheet.getRange('F1').getValue();
+  if (typeof defaultDuration !== 'number' || defaultDuration <= 0) defaultDuration = CONFIG.GAME_DURATION_HOURS;
+
   var teams = {};
   for (var i = 0; i < raw.length; i++) {
     if (raw[i][0] && raw[i][1] && raw[i][2]) {
-      teams[raw[i][2]] = { rang: raw[i][0], gruppe: raw[i][1] };
+      var spieldauer = raw[i][7]; // Spalte H
+      if (typeof spieldauer !== 'number' || spieldauer <= 0) spieldauer = defaultDuration;
+      teams[raw[i][2]] = { rang: raw[i][0], gruppe: raw[i][1], spieldauer: spieldauer };
     }
   }
   return teams;
@@ -1015,15 +1032,15 @@ function downloadTSV() {
 
   // Setup Teams
   result += '# data/setup_teams.tsv\n';
-  result += 'Rang\tGruppe\tTeamname\tKurzname\n';
+  result += 'Rang\tGruppe\tTeamname\tKurzname\tSpieldauer\n';
   var setupSheet = ss.getSheetByName(CONFIG.SHEET_SETUP);
   if (setupSheet) {
     var lastRow = Math.max(setupSheet.getLastRow(), 1);
     if (lastRow >= 2) {
-      var data = setupSheet.getRange(2, 1, lastRow - 1, 4).getValues();
+      var data = setupSheet.getRange(2, 1, lastRow - 1, 8).getValues();
       for (var i = 0; i < data.length; i++) {
         if (data[i][0]) {
-          result += [data[i][0], data[i][1], data[i][2], data[i][3]].join('\t') + '\n';
+          result += [data[i][0], data[i][1], data[i][2], data[i][3], data[i][7] || ''].join('\t') + '\n';
         }
       }
     }
@@ -1032,19 +1049,19 @@ function downloadTSV() {
 
   // Eingabe
   result += '# data/eingabe.tsv\n';
-  result += 'Datum\tStartzeit\tspäteste Endzeit\tTeam\tHeim/Auswärts\tGegner\tBereich\tKommentar\n';
+  result += 'Team\tGegner\tDatum\tStartzeit\tspäteste Endzeit\tHeim/Auswärts\tBereich\tKommentar\n';
   var eingabeSheet = ss.getSheetByName(CONFIG.SHEET_EINGABE);
   if (eingabeSheet) {
     var lastRow2 = Math.max(eingabeSheet.getLastRow(), 1);
     if (lastRow2 >= 2) {
       var data2 = eingabeSheet.getRange(2, 1, lastRow2 - 1, 9).getValues();
       for (var j = 0; j < data2.length; j++) {
-        if (data2[j][0]) {
-          var d = data2[j][0];
+        if (data2[j][2]) {
+          var d = data2[j][2];
           var dateStr = d instanceof Date ? ('0' + d.getDate()).slice(-2) + '.' + ('0' + (d.getMonth() + 1)).slice(-2) + '.' + d.getFullYear() : d;
-          var st = _formatTime(data2[j][1]);
-          var et = _formatTime(data2[j][2]);
-          result += [dateStr, st, et, data2[j][3], data2[j][4], data2[j][5], data2[j][6], data2[j][7]].join('\t') + '\n';
+          var st = _formatTime(data2[j][3]);
+          var et = _formatTime(data2[j][4]);
+          result += [data2[j][0], data2[j][1], dateStr, st, et, data2[j][5], data2[j][6], data2[j][7]].join('\t') + '\n';
         }
       }
     }

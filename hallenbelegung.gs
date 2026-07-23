@@ -454,10 +454,6 @@ function createBelegungsplanSheet(ss, sep, arrSep) {
   var QH = qBase + sqlHeim + sep + ' 0)';
   var QA = qBase + sqlAll + sep + ' 0)';
 
-  var QS = 'QUERY(\'' + sperrName + '\'!A2:G' + sep +
-    '"SELECT Col1, Col6, Col2, Col4, \'GESPERRT\', \' \', Col7, Col5, \'Sperrung\' ' +
-    'WHERE Col1 IS NOT NULL ORDER BY Col1, Col2"' + sep + ' 0)';
-
   var dummyRow = '{0' + arrSep + '0' + arrSep + '0' + arrSep + '0' + arrSep + '0' + arrSep + '0' + arrSep + '0' + arrSep + '0' + arrSep + '0}';
 
   var QS = 'IF(COUNTA(\'' + sperrName + '\'!A2:A)=0' + sep + ' ' + dummyRow + sep +

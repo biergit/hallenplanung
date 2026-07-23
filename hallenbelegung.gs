@@ -84,8 +84,11 @@ function setupSheet() {
     createSperrungenSheet(ss, sep);
   }
 
-  // Eingabe: nur anlegen, wenn nicht vorhanden
-  if (!ss.getSheetByName(CONFIG.SHEET_EINGABE)) {
+  // Eingabe: upgraden wenn vorhanden, sonst neu
+  var eingabeSheet = ss.getSheetByName(CONFIG.SHEET_EINGABE);
+  if (eingabeSheet) {
+    upgradeEingabeSheet(ss, sep);
+  } else {
     createEingabeSheet(ss, sep);
   }
 
@@ -198,6 +201,11 @@ function _seedSetup(ss) {
     var abRange = sheet.getRange(2, 1, abData.length, 2);
     abRange.clearDataValidations();
     abRange.setValues(abData);
+    // Validierungen wiederherstellen
+    sheet.getRange(2, 1, abData.length, 1).setDataValidation(
+      SpreadsheetApp.newDataValidation().requireNumberGreaterThan(0).setAllowInvalid(false).build());
+    sheet.getRange(2, 2, abData.length, 1).setDataValidation(
+      SpreadsheetApp.newDataValidation().requireValueInRange(sheet.getRange('G2:G100')).setAllowInvalid(false).build());
   }
   if (hData.length > 0) {
     sheet.getRange(2, 8, hData.length, 1).setValues(hData);
@@ -220,6 +228,18 @@ function _seedEingabe(ss) {
     var range = sheet.getRange(2, 1, data.length, 9);
     range.clearDataValidations();
     range.setValues(data);
+    // Validierungen wiederherstellen
+    var setupSheet = ss.getSheetByName(CONFIG.SHEET_SETUP);
+    if (setupSheet) {
+      sheet.getRange(2, 1, data.length, 1).setDataValidation(
+        SpreadsheetApp.newDataValidation().requireValueInRange(setupSheet.getRange('C2:C1000')).setAllowInvalid(false).build());
+    }
+    sheet.getRange(2, 3, data.length, 1).setDataValidation(
+      SpreadsheetApp.newDataValidation().requireDate().setAllowInvalid(true).setHelpText('Datum eingeben oder auswählen (Kalender)').build());
+    sheet.getRange(2, 6, data.length, 1).setDataValidation(
+      SpreadsheetApp.newDataValidation().requireValueInList(['Heim', 'Auswärts']).setAllowInvalid(false).build());
+    sheet.getRange(2, 7, data.length, 1).setDataValidation(
+      SpreadsheetApp.newDataValidation().requireValueInList(CONFIG.AREAS).setAllowInvalid(false).build());
   }
 }
 
@@ -239,6 +259,11 @@ function _seedSperrungen(ss) {
     var range = sheet.getRange(2, 1, data.length, 5);
     range.clearDataValidations();
     range.setValues(data);
+    // Validierungen wiederherstellen
+    sheet.getRange(2, 1, data.length, 1).setDataValidation(
+      SpreadsheetApp.newDataValidation().requireDate().setAllowInvalid(true).setHelpText('Datum eingeben oder auswählen').build());
+    sheet.getRange(2, 4, data.length, 1).setDataValidation(
+      SpreadsheetApp.newDataValidation().requireValueInList(CONFIG.AREAS.concat(['Alle'])).setAllowInvalid(false).build());
   }
 }
 
@@ -471,6 +496,20 @@ function upgradeSperrungenSheet(ss, sep) {
   protectRange(sheet, 'A1:G1');
 }
 
+function upgradeEingabeSheet(ss, sep) {
+  var sheet = ss.getSheetByName(CONFIG.SHEET_EINGABE);
+  if (!sheet) return;
+
+  var lastRow = sheet.getLastRow();
+  var maxRow = Math.max(lastRow, 2);
+
+  // Spalte J: Wochentag (Hilfsspalte für QUERY)
+  sheet.getRange(1, 10).setValue('Wochentag').setFontWeight('bold').setBackground('#E8E8E8');
+  sheet.getRange(2, 10, maxRow - 1, 1).setFormula('=IF(C2="";;TEXT(C2' + sep + '"ddd"))');
+
+  sheet.hideColumns(10, 1);
+}
+
 // -------------------- Eingabe-Blatt --------------------
 
 function createEingabeSheet(ss, sep) {
@@ -548,7 +587,13 @@ function createEingabeSheet(ss, sep) {
   rules.push(heimRule, auswaertsRule, fehlerRule, warnungRule);
   sheet.setConditionalFormatRules(rules);
 
-  protectRange(sheet, 'A1:I1');
+  protectRange(sheet, 'A1:J1');
+
+  // Spalte J: Wochentag (Hilfsspalte für QUERY im Hallen/Spielplan)
+  sheet.getRange(1, 10).setValue('Wochentag');
+  sheet.getRange(1, 10).setFontWeight('bold').setBackground('#E8E8E8');
+  sheet.getRange(2, 10, 1000, 1).setFormula('=IF(C2="";;TEXT(C2' + sep + '"ddd"))');
+  sheet.hideColumns(10, 1);
 
   sheet.setColumnWidth(1, 180);
   sheet.setColumnWidth(2, 200);
@@ -612,8 +657,7 @@ function createBelegungsplanSheet(ss, sep, arrSep) {
   // QH/QA: QUERY aus Eingabe, QS: COUNTA-gesicherte Sperrungen-QUERY
   // dummy: 9 leere Werte, sortiert ans Ende
 
-  var qBase = 'QUERY({Eingabe!A2:I' + arrSep +
-    ' ARRAYFORMULA(TEXT(Eingabe!C2:C' + sep + '"ddd"))}' + sep;
+  var qBase = 'QUERY({Eingabe!A2:J}' + sep;
 
   var sqlHeim = '"SELECT Col3, Col10, Col4, Col7, Col1, Col6, Col2, Col8, Col9 ' +
     'WHERE Col3 IS NOT NULL AND Col6=\'Heim\'"';

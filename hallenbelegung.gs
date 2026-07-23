@@ -47,7 +47,10 @@ var CONFIG = {
   SHEET_PLAN: 'Hallen/Spielplan',
 
   // Standard-Spieldauer in Stunden (konfigurierbar in Setup!F1)
-  GAME_DURATION_HOURS: 2.5
+  GAME_DURATION_HOURS: 2.5,
+
+  // Maximale Zeilenanzahl für Datenbereiche, Formatierungen und Validierungen
+  MAX_ROWS: 1000
 };
 // --- SEED DATA BEGIN ---
 var SEED_SETUP = JSON.parse("[]");
@@ -313,7 +316,7 @@ function createSetupSheet(ss, sep) {
   sheet.getRange(1, 8).setValue('Spieldauer (h)');
   sheet.getRange(1, 8).setFontWeight('bold').setBackground('#E8E8E8');
   sheet.getRange(1, 8).setNote('Optionale team-spezifische Spieldauer in Stunden. Leer lassen für Standard aus F1.');
-  sheet.getRange(2, 8, 999, 1).setNumberFormat('0.0');
+  sheet.getRange(2, 8, CONFIG.MAX_ROWS, 1).setNumberFormat('0.0');
 
   sheet.getRange(1, 7).setValue('Gruppenliste');
   sheet.getRange(1, 7).setFontWeight('bold');
@@ -346,13 +349,13 @@ function createSetupSheet(ss, sep) {
     .requireValueInRange(sheet.getRange('G2:G100'))
     .setAllowInvalid(false)
     .build();
-  sheet.getRange(2, 2, 1000, 1).setDataValidation(gruppeRule);
+  sheet.getRange(2, 2, CONFIG.MAX_ROWS, 1).setDataValidation(gruppeRule);
 
   var rangRule = SpreadsheetApp.newDataValidation()
     .requireNumberGreaterThan(0)
     .setAllowInvalid(false)
     .build();
-  sheet.getRange(2, 1, 1000, 1).setDataValidation(rangRule);
+  sheet.getRange(2, 1, CONFIG.MAX_ROWS, 1).setDataValidation(rangRule);
 
   protectRange(sheet, 'A1:D1');
 
@@ -436,19 +439,19 @@ function createSperrungenSheet(ss) {
     .setAllowInvalid(true)
     .setHelpText('Datum eingeben oder auswählen')
     .build();
-  sheet.getRange(2, 1, 1000, 1).setDataValidation(dateRule);
+  sheet.getRange(2, 1, CONFIG.MAX_ROWS, 1).setDataValidation(dateRule);
 
-  sheet.getRange(2, 2, 1000, 1).setNumberFormat('HH:MM');
-  sheet.getRange(2, 3, 1000, 1).setNumberFormat('HH:MM');
+  sheet.getRange(2, 2, CONFIG.MAX_ROWS, 1).setNumberFormat('HH:MM');
+  sheet.getRange(2, 3, CONFIG.MAX_ROWS, 1).setNumberFormat('HH:MM');
 
   var areas = CONFIG.AREAS.concat(['Alle']);
   var bereichRule = SpreadsheetApp.newDataValidation()
     .requireValueInList(areas)
     .setAllowInvalid(false)
     .build();
-  sheet.getRange(2, 4, 1000, 1).setDataValidation(bereichRule);
+  sheet.getRange(2, 4, CONFIG.MAX_ROWS, 1).setDataValidation(bereichRule);
 
-  sheet.getRange(2, 1, 1000, 1).setNumberFormat('DD.MM.YYYY');
+  sheet.getRange(2, 1, CONFIG.MAX_ROWS, 1).setNumberFormat('DD.MM.YYYY');
 
   protectRange(sheet, 'A1:E1');
 
@@ -508,9 +511,9 @@ function createEingabeSheet(ss, sep) {
     .setFontWeight('bold')
     .setBackground('#E8E8E8');
 
-  sheet.getRange(2, 3, 1000, 1).setNumberFormat('DD.MM.YYYY');
-  sheet.getRange(2, 4, 1000, 1).setNumberFormat('HH:MM');
-  sheet.getRange(2, 5, 1000, 1).setNumberFormat('HH:MM');
+  sheet.getRange(2, 3, CONFIG.MAX_ROWS, 1).setNumberFormat('DD.MM.YYYY');
+  sheet.getRange(2, 4, CONFIG.MAX_ROWS, 1).setNumberFormat('HH:MM');
+  sheet.getRange(2, 5, CONFIG.MAX_ROWS, 1).setNumberFormat('HH:MM');
 
   sheet.getRange(1, 5).setNote('Wird automatisch beim Eintragen der Startzeit berechnet (Startzeit + team-spezifische Spieldauer aus Setup).');
 
@@ -520,53 +523,53 @@ function createEingabeSheet(ss, sep) {
     .setAllowInvalid(true)
     .setHelpText('Datum eingeben oder auswählen (Kalender)')
     .build();
-  sheet.getRange(2, 3, 1000, 1).setDataValidation(dateRule);
+  sheet.getRange(2, 3, CONFIG.MAX_ROWS, 1).setDataValidation(dateRule);
 
   // Team-Dropdown aus Setup-Blatt
   var setupSheet = ss.getSheetByName(CONFIG.SHEET_SETUP);
   var teamRule = SpreadsheetApp.newDataValidation()
-    .requireValueInRange(setupSheet.getRange('C2:C1000'))
+.requireValueInRange(setupSheet.getRange('C2:C' + CONFIG.MAX_ROWS))
     .setAllowInvalid(false)
     .build();
-  sheet.getRange(2, 1, 1000, 1).setDataValidation(teamRule);
+  sheet.getRange(2, 1, CONFIG.MAX_ROWS, 1).setDataValidation(teamRule);
 
   // Heim/Auswärts
   var haRule = SpreadsheetApp.newDataValidation()
     .requireValueInList(['Heim', 'Auswärts'])
     .setAllowInvalid(false)
     .build();
-  sheet.getRange(2, 6, 1000, 1).setDataValidation(haRule);
+  sheet.getRange(2, 6, CONFIG.MAX_ROWS, 1).setDataValidation(haRule);
 
   // Bereich
   var areaRule = SpreadsheetApp.newDataValidation()
     .requireValueInList(CONFIG.AREAS)
     .setAllowInvalid(false)
     .build();
-  sheet.getRange(2, 7, 1000, 1).setDataValidation(areaRule);
+  sheet.getRange(2, 7, CONFIG.MAX_ROWS, 1).setDataValidation(areaRule);
 
   // Bedingte Formatierungen
   var heimRule = SpreadsheetApp.newConditionalFormatRule()
     .whenFormulaSatisfied('=$F2="Heim"')
     .setBackground('#C8E6C9')
-    .setRanges([sheet.getRange('A2:I1000')])
+    .setRanges([sheet.getRange('A2:I' + CONFIG.MAX_ROWS)])
     .build();
 
   var auswaertsRule = SpreadsheetApp.newConditionalFormatRule()
     .whenFormulaSatisfied('=$F2="Auswärts"')
     .setBackground('#BBDEFB')
-    .setRanges([sheet.getRange('A2:I1000')])
+    .setRanges([sheet.getRange('A2:I' + CONFIG.MAX_ROWS)])
     .build();
 
   var fehlerRule = SpreadsheetApp.newConditionalFormatRule()
     .whenFormulaSatisfied('=REGEXMATCH($I2' + sep + ' "❌")')
     .setBackground('#FFCDD2')
-    .setRanges([sheet.getRange('A2:I1000')])
+    .setRanges([sheet.getRange('A2:I' + CONFIG.MAX_ROWS)])
     .build();
 
   var warnungRule = SpreadsheetApp.newConditionalFormatRule()
     .whenFormulaSatisfied('=REGEXMATCH($I2' + sep + ' "⚠️")')
     .setBackground('#FFE0B2')
-    .setRanges([sheet.getRange('A2:I1000')])
+    .setRanges([sheet.getRange('A2:I' + CONFIG.MAX_ROWS)])
     .build();
 
   var rules = sheet.getConditionalFormatRules();
@@ -624,31 +627,31 @@ function createBelegungsplanSheet(ss, sep) {
   var heimRule = SpreadsheetApp.newConditionalFormatRule()
     .whenFormulaSatisfied('=$F4="Heim"')
     .setBackground('#C8E6C9')
-    .setRanges([sheet.getRange('A4:I1000')])
+    .setRanges([sheet.getRange('A4:I' + CONFIG.MAX_ROWS)])
     .build();
 
   var auswaertsRule = SpreadsheetApp.newConditionalFormatRule()
     .whenFormulaSatisfied('=$F4="Auswärts"')
     .setBackground('#BBDEFB')
-    .setRanges([sheet.getRange('A4:I1000')])
+    .setRanges([sheet.getRange('A4:I' + CONFIG.MAX_ROWS)])
     .build();
 
   var fehlerRule = SpreadsheetApp.newConditionalFormatRule()
     .whenFormulaSatisfied('=REGEXMATCH($I4' + sep + ' "❌")')
     .setBackground('#FFCDD2')
-    .setRanges([sheet.getRange('A4:I1000')])
+    .setRanges([sheet.getRange('A4:I' + CONFIG.MAX_ROWS)])
     .build();
 
   var warnungRule = SpreadsheetApp.newConditionalFormatRule()
     .whenFormulaSatisfied('=REGEXMATCH($I4' + sep + ' "⚠️")')
     .setBackground('#FFE0B2')
-    .setRanges([sheet.getRange('A4:I1000')])
+    .setRanges([sheet.getRange('A4:I' + CONFIG.MAX_ROWS)])
     .build();
 
   var sperrRule = SpreadsheetApp.newConditionalFormatRule()
     .whenFormulaSatisfied('=REGEXMATCH($I4' + sep + ' "gesperrt")')
     .setBackground('#E0E0E0')
-    .setRanges([sheet.getRange('A4:I1000')])
+    .setRanges([sheet.getRange('A4:I' + CONFIG.MAX_ROWS)])
     .build();
 
   var rules = sheet.getConditionalFormatRules();
@@ -756,6 +759,8 @@ function generatePlan() {
     planSheet.getRange(4, 1, rows.length, 9).setValues(rows);
     planSheet.getRange(4, 1, rows.length, 1).setNumberFormat('DD.MM.YYYY');
     planSheet.getRange(4, 3, rows.length, 1).setNumberFormat('HH:MM');
+  } else {
+    planSheet.getRange(4, 5).setValue('Keine Einträge für die aktuelle Filterauswahl.');
   }
 }
 
@@ -850,6 +855,20 @@ function validateAllEntries() {
     statusMessages[i] = [];
   }
 
+  var bookingsByDateAndArea = {};
+  var areaCountByDate = {};
+  for (var i = 0; i < data.length; i++) {
+    if (!isValidDate(data[i][2])) continue;
+    if (data[i][5] !== 'Heim' || !data[i][6]) continue;
+    var dk = datumToKey(data[i][2]);
+    var ba = data[i][6];
+    var key = dk + '|' + ba;
+    if (!bookingsByDateAndArea[key]) bookingsByDateAndArea[key] = [];
+    bookingsByDateAndArea[key].push(i);
+    if (!areaCountByDate[dk]) areaCountByDate[dk] = {};
+    areaCountByDate[dk][ba] = (areaCountByDate[dk][ba] || 0) + 1;
+  }
+
   for (var i = 0; i < data.length; i++) {
     var row = data[i];
     var datum = row[2];
@@ -878,48 +897,41 @@ function validateAllEntries() {
       statusMessages[i].push('❌ Mittwochs nur "' + CONFIG.WEDNESDAY_AREA + '" buchbar');
     }
 
-    // 1c. Di/Fr: max. 2 Bereiche
     if ((weekday === 2 || weekday === 5) && ha === 'Heim' && bereich) {
-      var areasOnDate = {};
-      for (var j = 0; j < data.length; j++) {
-        if (isValidDate(data[j][2]) && datumToKey(data[j][2]) === dateKey &&
-            data[j][5] === 'Heim' && data[j][6]) {
-          areasOnDate[data[j][6]] = true;
-        }
-      }
+      var areasOnDate = areaCountByDate[dateKey] || {};
       if (Object.keys(areasOnDate).length > CONFIG.MAX_AREAS_TUE_FRI) {
         statusMessages[i].push('❌ Di/Fr: max. ' + CONFIG.MAX_AREAS_TUE_FRI +
           ' Bereiche buchbar (' + Object.keys(areasOnDate).length + ' wären belegt)');
       }
     }
 
-    // 1d. Doppelbuchung prüfen
     if (ha === 'Heim' && bereich) {
-      for (var k = 0; k < data.length; k++) {
-          if (k !== i && isValidDate(data[k][2]) &&
-              datumToKey(data[k][2]) === dateKey &&
-              data[k][5] === 'Heim' &&
-              data[k][6] === bereich) {
-
-            if (weekday === 6 || weekday === 0) {
-              var otherStart = data[k][3];
-              var otherEnd = data[k][4];
-              var s1 = timeToFraction(startzeit), e1 = timeToFraction(endzeit);
-              var s2 = timeToFraction(otherStart), e2 = timeToFraction(otherEnd);
-              if (s1 !== null && e1 !== null && s2 !== null && e2 !== null) {
-                if (s1 < e2 && e1 > s2) {
-                  statusMessages[i].push('❌ Zeitüberlappung in "' + bereich + '"');
-                  break;
-                }
-              } else {
-                statusMessages[i].push('❌ "' + bereich + '" bereits belegt (Startzeit fehlt)');
+      var key = dateKey + '|' + bereich;
+      var sameSlot = bookingsByDateAndArea[key] || [];
+      var others = sameSlot.filter(function(j) { return j !== i; });
+      if (others.length > 0) {
+        if (weekday === 6 || weekday === 0) {
+          var s1 = timeToFraction(startzeit), e1 = timeToFraction(endzeit);
+          var hasOverlap = false;
+          for (var k = 0; k < others.length; k++) {
+            var s2 = timeToFraction(data[others[k]][3]);
+            var e2 = timeToFraction(data[others[k]][4]);
+            if (s1 !== null && e1 !== null && s2 !== null && e2 !== null) {
+              if (s1 < e2 && e1 > s2) {
+                statusMessages[i].push('❌ Zeitüberlappung in "' + bereich + '"');
+                hasOverlap = true;
                 break;
               }
             } else {
-              statusMessages[i].push('❌ "' + bereich + '" an diesem Tag bereits belegt');
-              break;
+              if (!hasOverlap) {
+                statusMessages[i].push('❌ "' + bereich + '" bereits belegt (Startzeit fehlt)');
+                hasOverlap = true;
+              }
             }
           }
+        } else {
+          statusMessages[i].push('❌ "' + bereich + '" an diesem Tag bereits belegt');
+        }
       }
     }
 
@@ -939,9 +951,10 @@ function validateAllEntries() {
             var ss = timeToFraction(sStart), se = timeToFraction(sEnd);
             if (bs !== null && be !== null && ss !== null && se !== null) {
               if (bs < se && be > ss) {
-              var msg = '❌ Überschneidung mit Sperrung';
-              if (sperrungen[s].kommentar) msg += ': ' + sperrungen[s].kommentar;
-              statusMessages[i].push(msg);
+                var msg = '❌ Überschneidung mit Sperrung';
+                if (sperrungen[s].kommentar) msg += ': ' + sperrungen[s].kommentar;
+                statusMessages[i].push(msg);
+              }
             }
           }
         } else {
@@ -956,19 +969,28 @@ function validateAllEntries() {
         }
       }
     }
-  }
+
+    if (ha === 'Heim' && isValidTime(startzeit) && isValidTime(endzeit)) {
+      var st = timeToFraction(startzeit);
+      var et = timeToFraction(endzeit);
+      if (st !== null && et !== null && et <= st) {
+        statusMessages[i].push('❌ Endzeit muss nach Startzeit liegen');
+      }
+    }
   }
 
-  // 2. Benachbarte Teams
   var adjacentMessages = checkAdjacentTeams(data, teams);
 
-  // 3. Status schreiben (Spalte I)
+  var statusValues = [];
   for (var i = 0; i < data.length; i++) {
     var allMessages = statusMessages[i].slice();
     if (adjacentMessages[i]) {
       allMessages = allMessages.concat(adjacentMessages[i]);
     }
-    sheet.getRange(i + 2, 9).setValue(allMessages.join(' | '));
+    statusValues.push([allMessages.join(' | ')]);
+  }
+  if (statusValues.length > 0) {
+    sheet.getRange(2, 9, statusValues.length, 1).setValues(statusValues);
   }
 }
 
@@ -1101,7 +1123,8 @@ function datumToKey(datum) {
 function protectRange(sheet, rangeA1) {
   var protection = sheet.getRange(rangeA1).protect();
   protection.setDescription('Kopfzeile geschützt');
-  protection.setWarningOnly(true);
+  protection.removeEditors(protection.getEditors());
+  if (protection.canDomainEdit()) protection.setDomainEdit(false);
 }
 
 function createTrigger() {

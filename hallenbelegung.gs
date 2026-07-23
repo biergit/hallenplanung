@@ -59,7 +59,9 @@ function setupSheet() {
   var sep = isGerman ? ';' : ',';
   var arrSep = isGerman ? '\\' : ',';
 
-  // Plan sheet immer neu (keine Nutzerdaten)
+  // Plan sheet immer neu (auch alten Reiter-Namen aufräumen)
+  var oldPlan = ss.getSheetByName('Belegungsplan');
+  if (oldPlan) ss.deleteSheet(oldPlan);
   var planSheet = ss.getSheetByName(CONFIG.SHEET_PLAN);
   if (planSheet) ss.deleteSheet(planSheet);
   createBelegungsplanSheet(ss, sep, arrSep);

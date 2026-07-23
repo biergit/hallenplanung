@@ -346,7 +346,7 @@ function createEingabeSheet(ss, sep) {
   // Bereich
   var areaRule = SpreadsheetApp.newDataValidation()
     .requireValueInList(CONFIG.AREAS)
-    .setAllowInvalid(true)
+    .setAllowInvalid(false)
     .build();
   sheet.getRange(2, 7, 1000, 1).setDataValidation(areaRule);
 

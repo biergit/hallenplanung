@@ -62,7 +62,6 @@ function setupSheet() {
   var locale = ss.getSpreadsheetLocale();
   var isGerman = locale.startsWith('de');
   var sep = isGerman ? ';' : ',';
-  var arrSep = isGerman ? '\\' : ',';
 
   // Setup: nur anlegen, wenn nicht vorhanden
   if (!ss.getSheetByName(CONFIG.SHEET_SETUP)) {
@@ -90,7 +89,8 @@ function setupSheet() {
   if (oldPlan) ss.deleteSheet(oldPlan);
   var planSheet = ss.getSheetByName(CONFIG.SHEET_PLAN);
   if (planSheet) ss.deleteSheet(planSheet);
-  createBelegungsplanSheet(ss, sep, arrSep);
+  createBelegungsplanSheet(ss, sep);
+  generatePlan();
 
   createTrigger();
 
@@ -117,7 +117,6 @@ function resetAll() {
   var locale = ss.getSpreadsheetLocale();
   var isGerman = locale.startsWith('de');
   var sep = isGerman ? ';' : ',';
-  var arrSep = isGerman ? '\\' : ',';
 
   var sheetNames = [CONFIG.SHEET_PLAN, CONFIG.SHEET_EINGABE, CONFIG.SHEET_SPERRUNGEN, CONFIG.SHEET_SETUP];
   sheetNames.forEach(function(name) {
@@ -131,9 +130,10 @@ function resetAll() {
   createSetupSheet(ss, sep);
   createSperrungenSheet(ss, sep);
   createEingabeSheet(ss, sep);
-  createBelegungsplanSheet(ss, sep, arrSep);
+  createBelegungsplanSheet(ss, sep);
   createTrigger();
   seedSheets(ss);
+  generatePlan();
 
   var msg = 'Alles neu angelegt inkl. Seed-Daten.\n\n' +
     '  1. ' + CONFIG.SHEET_SETUP + '\n' +
@@ -152,7 +152,6 @@ function createSheetsOnly() {
   var locale = ss.getSpreadsheetLocale();
   var isGerman = locale.startsWith('de');
   var sep = isGerman ? ';' : ',';
-  var arrSep = isGerman ? '\\' : ',';
 
   var sheetNames = [CONFIG.SHEET_PLAN, CONFIG.SHEET_EINGABE, CONFIG.SHEET_SPERRUNGEN, CONFIG.SHEET_SETUP];
   sheetNames.forEach(function(name) {
@@ -165,8 +164,9 @@ function createSheetsOnly() {
   createSetupSheet(ss, sep);
   createSperrungenSheet(ss, sep);
   createEingabeSheet(ss, sep);
-  createBelegungsplanSheet(ss, sep, arrSep);
+  createBelegungsplanSheet(ss, sep);
   createTrigger();
+  generatePlan();
 
   var msg = 'Blätter neu angelegt (ohne Seed-Daten).';
   try {
@@ -628,9 +628,8 @@ function createEingabeSheet(ss, sep) {
 
 // -------------------- Belegungsplan-Blatt --------------------
 
-function createBelegungsplanSheet(ss, sep, arrSep) {
+function createBelegungsplanSheet(ss, sep) {
   var sheet = ss.insertSheet(CONFIG.SHEET_PLAN, 3);
-  var sperrName = CONFIG.SHEET_SPERRUNGEN;
 
   // Checkbox 1 in A1: Nur Hallenbelegung
   sheet.getRange('A1').insertCheckboxes();
@@ -652,38 +651,6 @@ function createBelegungsplanSheet(ss, sep, arrSep) {
     .setValues([headers])
     .setFontWeight('bold')
     .setBackground('#E8E8E8');
-
-  // Formel: =SORT({IF(A1; QH; QA); IF(A2; QS; dummy)}; 1; TRUE; 3; TRUE)
-  // QH/QA: QUERY aus Eingabe, QS: COUNTA-gesicherte Sperrungen-QUERY
-  // dummy: 9 leere Werte, sortiert ans Ende
-
-  var qBase = 'QUERY({Eingabe!A2:I' + arrSep +
-    ' Eingabe!J2:J}' + sep;
-
-  var sqlHeim = '"SELECT Col3, Col10, Col4, Col7, Col1, Col6, Col2, Col8, Col9 ' +
-    'WHERE Col3 IS NOT NULL AND Col6=\'Heim\'"';
-  var sqlAll = '"SELECT Col3, Col10, Col4, Col7, Col1, Col6, Col2, Col8, Col9 ' +
-    'WHERE Col3 IS NOT NULL"';
-
-  var dummyRow = '{""' + arrSep + '""' + arrSep + '""' + arrSep + '""' + arrSep + '""' + arrSep + '""' + arrSep + '""' + arrSep + '""' + arrSep + '""}';
-
-  var QH = 'IFERROR(' + qBase + sqlHeim + sep + ' 0)' + sep + ' ' + dummyRow + ')';
-  var QA = 'IFERROR(' + qBase + sqlAll + sep + ' 0)' + sep + ' ' + dummyRow + ')';
-
-  var QS = 'IFERROR(QUERY(\'' + sperrName + '\'!A2:G' + sep +
-    '"SELECT Col1, Col6, Col2, Col4, \' \', \' \', Col7, Col5, \' \' ' +
-    'WHERE Col1 IS NOT NULL AND Col4 IS NOT NULL"' + sep + ' 0)' + sep + ' ' + dummyRow + ')';
-
-  var formula = '=QUERY(SORT({' +
-    'IF(A1' + sep + ' ' + QH + sep + ' ' + QA + ')' + sep +
-    ' IF(A2' + sep + ' ' + QS + sep + ' ' + dummyRow + ')' +
-    '}' + sep + ' 1' + sep + ' TRUE' + sep + ' 3' + sep + ' TRUE)' + sep +
-    '"SELECT * WHERE Col1 IS NOT NULL"' + sep + ' 0)';
-
-  sheet.getRange(4, 1).setFormula(formula);
-
-  sheet.getRange(4, 1, 1000, 1).setNumberFormat('DD.MM.YYYY');
-  sheet.getRange(4, 3, 1000, 1).setNumberFormat('HH:MM');
 
   // Bedingte Formatierungen
   var heimRule = SpreadsheetApp.newConditionalFormatRule()
@@ -734,6 +701,113 @@ function createBelegungsplanSheet(ss, sep, arrSep) {
   protectRange(sheet, 'A3:I3');
 }
 
+function generatePlan() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var planSheet = ss.getSheetByName(CONFIG.SHEET_PLAN);
+  if (!planSheet) return;
+
+  var nurHeim = planSheet.getRange('A1').isChecked();
+  var sperrungenAnzeigen = planSheet.getRange('A2').isChecked();
+
+  var rows = [];
+
+  var eingabeSheet = ss.getSheetByName(CONFIG.SHEET_EINGABE);
+  if (eingabeSheet) {
+    var lastRow = eingabeSheet.getLastRow();
+    if (lastRow >= 2) {
+      var data = eingabeSheet.getRange(2, 1, lastRow - 1, 9).getValues();
+      for (var i = 0; i < data.length; i++) {
+        var row = data[i];
+        if (!isValidDate(row[2])) continue;
+        if (nurHeim && row[5] !== 'Heim') continue;
+        rows.push([
+          row[2],
+          weekdayName(row[2].getDay()),
+          row[3],
+          row[6] || '',
+          row[0],
+          row[5],
+          row[1],
+          row[7] || '',
+          row[8] || ''
+        ]);
+      }
+    }
+  }
+
+  if (sperrungenAnzeigen) {
+    var sperrSheet = ss.getSheetByName(CONFIG.SHEET_SPERRUNGEN);
+    if (sperrSheet) {
+      var lastRow = sperrSheet.getLastRow();
+      if (lastRow >= 2) {
+        var data = sperrSheet.getRange(2, 1, lastRow - 1, 5).getValues();
+        for (var i = 0; i < data.length; i++) {
+          var row = data[i];
+          if (!isValidDate(row[0])) continue;
+          var zeitraum = '';
+          if (!isValidTime(row[1]) && !isValidTime(row[2])) {
+            zeitraum = 'ganztägig';
+          } else if (isValidTime(row[1]) && isValidTime(row[2])) {
+            zeitraum = formatTime(row[1]) + ' - ' + formatTime(row[2]);
+          } else if (isValidTime(row[1])) {
+            zeitraum = formatTime(row[1]);
+          } else {
+            zeitraum = 'ganztägig';
+          }
+          rows.push([
+            row[0],
+            weekdayName(row[0].getDay()),
+            row[1],
+            row[3] || '',
+            '',
+            '',
+            zeitraum,
+            row[4] || '',
+            'gesperrt'
+          ]);
+        }
+      }
+    }
+  }
+
+  rows.sort(function(a, b) {
+    var da = a[0] instanceof Date ? a[0].getTime() : 0;
+    var db = b[0] instanceof Date ? b[0].getTime() : 0;
+    if (da !== db) return da - db;
+    var ta = timeToFraction(a[2]) || 0;
+    var tb = timeToFraction(b[2]) || 0;
+    return ta - tb;
+  });
+
+  var maxRow = Math.max(planSheet.getLastRow(), 3);
+  if (maxRow >= 4) {
+    planSheet.getRange(4, 1, maxRow - 3, 9).clearContent();
+  }
+
+  if (rows.length > 0) {
+    planSheet.getRange(4, 1, rows.length, 9).setValues(rows);
+    planSheet.getRange(4, 1, rows.length, 1).setNumberFormat('DD.MM.YYYY');
+    planSheet.getRange(4, 3, rows.length, 1).setNumberFormat('HH:MM');
+  }
+}
+
+function weekdayName(day) {
+  return ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa'][day];
+}
+
+function formatTime(t) {
+  if (t instanceof Date) {
+    return ('0' + t.getHours()).slice(-2) + ':' + ('0' + t.getMinutes()).slice(-2);
+  }
+  if (typeof t === 'number' && t >= 0 && t < 1) {
+    var total = Math.round(t * 1440);
+    var h = Math.floor(total / 60);
+    var m = total % 60;
+    return ('0' + h).slice(-2) + ':' + ('0' + m).slice(-2);
+  }
+  return '';
+}
+
 // ==================== VALIDIERUNG ====================
 
 function handleEdit(e) {
@@ -759,9 +833,15 @@ function handleEdit(e) {
     var relevantCols = [3, 4, 5, 1, 6, 7];
     if (relevantCols.indexOf(col) === -1 && col !== 2 && col !== 8) return;
     validateAllEntries();
+    generatePlan();
   } else if (name === CONFIG.SHEET_SPERRUNGEN) {
     if (e.range.getRow() < 2) return;
     validateAllEntries();
+    generatePlan();
+  } else if (name === CONFIG.SHEET_PLAN) {
+    if (e.range.getRow() <= 2 && e.range.getColumn() === 1) {
+      generatePlan();
+    }
   }
 }
 
@@ -1066,6 +1146,13 @@ function createTrigger() {
     .forSpreadsheet(SpreadsheetApp.getActiveSpreadsheet())
     .onEdit()
     .create();
+}
+
+function onOpen() {
+  var ui = SpreadsheetApp.getUi();
+  ui.createMenu('Hallenplanung')
+    .addItem('Plan aktualisieren', 'generatePlan')
+    .addToUi();
 }
 
 // ==================== TSV-EXPORT ====================

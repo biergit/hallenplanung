@@ -87,12 +87,16 @@ function setupSheet() {
     createEingabeSheet(ss, sep);
   }
 
-  // Plan sheet immer neu (auch alten Reiter-Namen aufräumen)
+  // Plan: upgraden wenn vorhanden (GID erhalten für veröffentlichte Web-URL),
+  // sonst neu anlegen. Tab löschen = GID ändert sich = Link kaputt.
   var oldPlan = ss.getSheetByName('Belegungsplan');
   if (oldPlan) ss.deleteSheet(oldPlan);
   var planSheet = ss.getSheetByName(CONFIG.SHEET_PLAN);
-  if (planSheet) ss.deleteSheet(planSheet);
-  createBelegungsplanSheet(ss, sep);
+  if (planSheet) {
+    upgradeBelegungsplanSheet(ss, sep);
+  } else {
+    createBelegungsplanSheet(ss, sep);
+  }
   generatePlan();
 
   createTrigger();
@@ -121,19 +125,26 @@ function resetAll() {
   var isGerman = locale.startsWith('de');
   var sep = isGerman ? ';' : ',';
 
-  var sheetNames = [CONFIG.SHEET_PLAN, CONFIG.SHEET_EINGABE, CONFIG.SHEET_SPERRUNGEN, CONFIG.SHEET_SETUP];
+  // Datenblätter löschen (Plan erhalten wegen veröffentlichter Web-URL)
+  var sheetNames = [CONFIG.SHEET_SETUP, CONFIG.SHEET_SPERRUNGEN, CONFIG.SHEET_EINGABE];
   sheetNames.forEach(function(name) {
     var sheet = ss.getSheetByName(name);
     if (sheet) ss.deleteSheet(sheet);
   });
-  // Alten Reiter-Namen aufräumen
   var oldPlan = ss.getSheetByName('Belegungsplan');
   if (oldPlan) ss.deleteSheet(oldPlan);
 
   createSetupSheet(ss, sep);
   createSperrungenSheet(ss);
   createEingabeSheet(ss, sep);
-  createBelegungsplanSheet(ss, sep);
+
+  var planSheet = ss.getSheetByName(CONFIG.SHEET_PLAN);
+  if (planSheet) {
+    upgradeBelegungsplanSheet(ss, sep);
+  } else {
+    createBelegungsplanSheet(ss, sep);
+  }
+
   createTrigger();
   seedSheets(ss);
   generatePlan();
@@ -156,7 +167,8 @@ function createSheetsOnly() {
   var isGerman = locale.startsWith('de');
   var sep = isGerman ? ';' : ',';
 
-  var sheetNames = [CONFIG.SHEET_PLAN, CONFIG.SHEET_EINGABE, CONFIG.SHEET_SPERRUNGEN, CONFIG.SHEET_SETUP];
+  // Datenblätter löschen (Plan erhalten wegen veröffentlichter Web-URL)
+  var sheetNames = [CONFIG.SHEET_SETUP, CONFIG.SHEET_SPERRUNGEN, CONFIG.SHEET_EINGABE];
   sheetNames.forEach(function(name) {
     var sheet = ss.getSheetByName(name);
     if (sheet) ss.deleteSheet(sheet);
@@ -167,7 +179,14 @@ function createSheetsOnly() {
   createSetupSheet(ss, sep);
   createSperrungenSheet(ss);
   createEingabeSheet(ss, sep);
-  createBelegungsplanSheet(ss, sep);
+
+  var planSheet = ss.getSheetByName(CONFIG.SHEET_PLAN);
+  if (planSheet) {
+    upgradeBelegungsplanSheet(ss, sep);
+  } else {
+    createBelegungsplanSheet(ss, sep);
+  }
+
   createTrigger();
   generatePlan();
 
@@ -603,7 +622,27 @@ function createEingabeSheet(ss, sep) {
 // -------------------- Belegungsplan-Blatt --------------------
 
 function createBelegungsplanSheet(ss, sep) {
-  var sheet = ss.insertSheet(CONFIG.SHEET_PLAN, 3);
+  initBelegungsplanSheet(ss.insertSheet(CONFIG.SHEET_PLAN, 3), sep);
+}
+
+/**
+ * Aktualisiert die Struktur des Hallen/Spielplan-Tabs, ohne ihn zu löschen.
+ * Die GID (Tab-ID) bleibt erhalten — Voraussetzung für eine stabile,
+ * veröffentlichte Web-URL. Ein Löschen+Neuanlegen würde die URL brechen.
+ *
+ * Wird von setupSheet(), resetAll() und createSheetsOnly() aufgerufen,
+ * wenn der Tab bereits existiert.
+ */
+function upgradeBelegungsplanSheet(ss, sep) {
+  var sheet = ss.getSheetByName(CONFIG.SHEET_PLAN);
+  if (!sheet) {
+    createBelegungsplanSheet(ss, sep);
+    return;
+  }
+  initBelegungsplanSheet(sheet, sep);
+}
+
+function initBelegungsplanSheet(sheet, sep) {
 
   // Checkbox 1 in A1: Nur Hallenbelegung
   sheet.getRange('A1').insertCheckboxes();

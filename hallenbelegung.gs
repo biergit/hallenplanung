@@ -44,7 +44,7 @@ var CONFIG = {
   SHEET_SETUP: 'Setup',
   SHEET_SPERRUNGEN: 'Sperrungen/Anderweitige Belegungen',
   SHEET_EINGABE: 'Eingabe',
-  SHEET_PLAN: 'Belegungsplan',
+  SHEET_PLAN: 'Hallen/Spielplan',
 
   // Standard-Spieldauer in Stunden (konfigurierbar in Setup!F1)
   GAME_DURATION_HOURS: 4
@@ -59,21 +59,33 @@ function setupSheet() {
   var sep = isGerman ? ';' : ',';
   var arrSep = isGerman ? '\\' : ',';
 
-  var sheetNames = [CONFIG.SHEET_PLAN, CONFIG.SHEET_EINGABE, CONFIG.SHEET_SPERRUNGEN, CONFIG.SHEET_SETUP];
-  sheetNames.forEach(function(name) {
-    var sheet = ss.getSheetByName(name);
-    if (sheet) ss.deleteSheet(sheet);
-  });
-
-  createSetupSheet(ss, sep);
-  createSperrungenSheet(ss, sep);
-  createEingabeSheet(ss, sep);
+  // Plan sheet immer neu (keine Nutzerdaten)
+  var planSheet = ss.getSheetByName(CONFIG.SHEET_PLAN);
+  if (planSheet) ss.deleteSheet(planSheet);
   createBelegungsplanSheet(ss, sep, arrSep);
+
+  // Setup: nur anlegen, wenn nicht vorhanden
+  if (!ss.getSheetByName(CONFIG.SHEET_SETUP)) {
+    createSetupSheet(ss, sep);
+  }
+
+  // Sperrungen: upgraden wenn vorhanden, sonst neu
+  var sperrSheet = ss.getSheetByName(CONFIG.SHEET_SPERRUNGEN);
+  if (sperrSheet) {
+    upgradeSperrungenSheet(ss, sep);
+  } else {
+    createSperrungenSheet(ss, sep);
+  }
+
+  // Eingabe: nur anlegen, wenn nicht vorhanden
+  if (!ss.getSheetByName(CONFIG.SHEET_EINGABE)) {
+    createEingabeSheet(ss, sep);
+  }
 
   createTrigger();
 
   var msg = 'Setup abgeschlossen!\n\n' +
-    'Die folgenden Blätter wurden erstellt:\n\n' +
+    'Blätter:\n' +
     '  1. ' + CONFIG.SHEET_SETUP + ' – Team-Konfiguration und Einstellungen\n' +
     '  2. ' + CONFIG.SHEET_SPERRUNGEN + ' – Gesperrte Tage, Bereiche, Zeiträume\n' +
     '  3. ' + CONFIG.SHEET_EINGABE + ' – Dateneingabe für Mannschaftsführer\n' +
@@ -181,12 +193,12 @@ function createSetupSheet(ss, sep) {
     ['', 'Ohne Start-/Endzeit: ganztägig gesperrt.'],
     ['', 'Mit Start-/Endzeit: nur dieser Zeitraum gesperrt.'],
     ['', ''],
-    ['BELEGUNGSPLAN:', 'Kalenderansicht für die Web-Veröffentlichung.'],
+    ['HALLEN/SPIELPLAN:', 'Kalenderansicht für die Web-Veröffentlichung.'],
     ['', 'Checkbox A1: Nur Hallenbelegung (Heimspiele).'],
-    ['', 'Checkbox A2: Sperrungen einblenden.'],
+    ['', 'Checkbox A2: Sperrungen/Anderw. Belegungen einblenden.'],
     ['', ''],
     ['WEB-VERÖFFENTLICHUNG:', 'Datei → Freigeben → Für das Web veröffentlichen'],
-    ['', 'Blatt "Belegungsplan" auswählen.'],
+    ['', 'Blatt "Hallen/Spielplan" auswählen.'],
     ['', 'Checkboxen VOR dem Veröffentlichen nach Wunsch setzen.'],
     ['', ''],
     ['FREIGABE:', 'Datei → Freigeben → E-Mail der Mannschaftsführer hinzufügen'],
@@ -215,8 +227,8 @@ function createSetupSheet(ss, sep) {
 function createSperrungenSheet(ss, sep) {
   var sheet = ss.insertSheet(CONFIG.SHEET_SPERRUNGEN, 1);
 
-  var headers = ['Datum', 'Startzeit', 'Endzeit', 'Bereich', 'Kommentar'];
-  sheet.getRange(1, 1, 1, 5)
+  var headers = ['Datum', 'Startzeit', 'Endzeit', 'Bereich', 'Kommentar', 'Wochentag', 'Zeitraum Anzeige'];
+  sheet.getRange(1, 1, 1, 7)
     .setValues([headers])
     .setFontWeight('bold')
     .setBackground('#E8E8E8');
@@ -240,7 +252,16 @@ function createSperrungenSheet(ss, sep) {
 
   sheet.getRange(2, 1, 1000, 1).setNumberFormat('DD.MM.YYYY');
 
-  protectRange(sheet, 'A1:E1');
+  // F: Wochentag (Hilfsspalte für QUERY im Hallen/Spielplan)
+  sheet.getRange(2, 6, 1000, 1).setFormula('=IF(A2="";;TEXT(A2' + sep + '"ddd"))');
+
+  // G: Zeitraum-Anzeige (Hilfsspalte für QUERY im Hallen/Spielplan)
+  sheet.getRange(2, 7, 1000, 1).setFormula(
+    '=IF(A2="";;IF(B2="";"ganztägig";TEXT(B2' + sep + '"HH:MM")&" - "&TEXT(C2' + sep + '"HH:MM")))');
+
+  sheet.hideColumns(6, 2);
+
+  protectRange(sheet, 'A1:G1');
 
   sheet.setColumnWidth(1, 120);
   sheet.setColumnWidth(2, 100);
@@ -255,6 +276,34 @@ function createSperrungenSheet(ss, sep) {
     'Ohne Zeitangabe = ganztägig gesperrt.\n' +
     '"Alle" = gesamte Halle an diesem Tag/in diesem Zeitraum gesperrt.'
   );
+}
+
+function upgradeSperrungenSheet(ss, sep) {
+  var sheet = ss.getSheetByName(CONFIG.SHEET_SPERRUNGEN);
+  if (!sheet) return;
+
+  var lastRow = sheet.getLastRow();
+  var maxRow = Math.max(lastRow, 1);
+
+  // Spalte F: Wochentag (Hilfsspalte für QUERY)
+  if (sheet.getRange(1, 6).getValue() !== 'Wochentag') {
+    sheet.getRange(1, 6).setValue('Wochentag').setFontWeight('bold').setBackground('#E8E8E8');
+    if (maxRow >= 2) {
+      sheet.getRange(2, 6, maxRow, 1).setFormula('=IF(A2="";;TEXT(A2' + sep + '"ddd"))');
+    }
+  }
+
+  // Spalte G: Zeitraum-Anzeige (Hilfsspalte für QUERY)
+  if (sheet.getRange(1, 7).getValue() !== 'Zeitraum Anzeige') {
+    sheet.getRange(1, 7).setValue('Zeitraum Anzeige').setFontWeight('bold').setBackground('#E8E8E8');
+    if (maxRow >= 2) {
+      sheet.getRange(2, 7, maxRow, 1).setFormula(
+        '=IF(A2="";;IF(B2="";"ganztägig";TEXT(B2' + sep + '"HH:MM")&" - "&TEXT(C2' + sep + '"HH:MM")))');
+    }
+  }
+
+  sheet.hideColumns(6, 2);
+  protectRange(sheet, 'A1:G1');
 }
 
 // -------------------- Eingabe-Blatt --------------------
@@ -385,7 +434,7 @@ function createBelegungsplanSheet(ss, sep, arrSep) {
   // Checkbox 2 in A2: Sperrungen anzeigen
   sheet.getRange('A2').insertCheckboxes();
   sheet.getRange('A2').setValue(false);
-  sheet.getRange('B2').setValue('Sperrungen anzeigen');
+  sheet.getRange('B2').setValue('Sperrungen/Anderweitige Belegungen anzeigen');
   sheet.getRange('B2').setFontStyle('italic');
   sheet.getRange('B2').setFontColor('#555555');
 
@@ -396,9 +445,9 @@ function createBelegungsplanSheet(ss, sep, arrSep) {
     .setFontWeight('bold')
     .setBackground('#E8E8E8');
 
-  // QUERY-Bausteine (ohne &-Konkatenierung, ohne IF in {}-Literal)
-  // QH = nur Heimspiele, QA = alle Spiele, QS = Sperrungen
+  // QUERY-Bausteine: QH = nur Heimspiele, QA = alle Spiele, QS = Sperrungen
   // Formel: =IF(A1; IF(A2; {QH; QS}; QH); IF(A2; {QA; QS}; QA))
+  // QS verwendet Hilfsspalten F (Wochentag) und G (Zeitraum) aus dem Sperrungen-Blatt
 
   var qBase = 'QUERY({Eingabe!A2:I' + arrSep +
     ' ARRAYFORMULA(TEXT(Eingabe!A2:A' + sep + '"ddd"))}' + sep;
@@ -411,12 +460,7 @@ function createBelegungsplanSheet(ss, sep, arrSep) {
   var QH = qBase + sqlHeim + sep + ' 0)';
   var QA = qBase + sqlAll + sep + ' 0)';
 
-  var QS = 'QUERY({\'' + sperrName + '\'!A2:E' + arrSep +
-    ' ARRAYFORMULA(TEXT(\'' + sperrName + '\'!A2:A' + sep + '"ddd"))' + arrSep +
-    ' ARRAYFORMULA(IF(\'' + sperrName + '\'!B2:B=""' + sep +
-    ' "ganztägig"' + sep +
-    ' TEXT(\'' + sperrName + '\'!B2:B' + sep + '"HH:MM")&" - "&' +
-    'TEXT(\'' + sperrName + '\'!C2:C' + sep + '"HH:MM")))}' + sep +
+  var QS = 'QUERY(\'' + sperrName + '\'!A2:G' + sep +
     '"SELECT Col1, Col6, Col2, Col4, \'🔒 GESPERRT\', \'\', Col7, Col5, \'Sperrung\' ' +
     'WHERE Col1 IS NOT NULL ORDER BY Col1, Col2"' + sep + ' 0)';
 

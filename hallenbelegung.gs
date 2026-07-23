@@ -90,7 +90,6 @@ function setupSheet() {
   }
 
   createTrigger();
-  seedSheets(ss);
 
   var msg = 'Setup abgeschlossen!\n\n' +
     'Blätter:\n' +
@@ -176,29 +175,33 @@ function createSheetsOnly() {
 
 function seedSheets(ss) {
   if (!ss) ss = SpreadsheetApp.getActiveSpreadsheet();
-  if (SEED_SETUP.length > 0) _seedSetup(ss);
+  if (SEED_SETUP.length > 0) {
+    _seedSetup(ss);
+    SpreadsheetApp.flush();
+  }
   if (SEED_EINGABE.length > 0) _seedEingabe(ss);
   if (SEED_SPERRUNGEN.length > 0) _seedSperrungen(ss);
+  validateAllEntries();
 }
 
 function _seedSetup(ss) {
   var sheet = ss.getSheetByName(CONFIG.SHEET_SETUP);
   if (!sheet) return;
-  if (sheet.getLastRow() >= 2) return; // Bereits Daten vorhanden
 
   var data = [];
   for (var i = 0; i < SEED_SETUP.length; i++) {
     data.push([parseInt(SEED_SETUP[i][0]), SEED_SETUP[i][1]]);
   }
   if (data.length > 0) {
-    sheet.getRange(2, 1, data.length, 2).setValues(data);
+    var range = sheet.getRange(2, 1, data.length, 2);
+    range.clearDataValidations();
+    range.setValues(data);
   }
 }
 
 function _seedEingabe(ss) {
   var sheet = ss.getSheetByName(CONFIG.SHEET_EINGABE);
   if (!sheet) return;
-  if (sheet.getLastRow() >= 2) return;
 
   var data = [];
   for (var i = 0; i < SEED_EINGABE.length; i++) {
@@ -209,14 +212,15 @@ function _seedEingabe(ss) {
     data.push([datum, startzeit, endzeit, row[3], row[4], row[5], row[6], row[7], '']);
   }
   if (data.length > 0) {
-    sheet.getRange(2, 1, data.length, 9).setValues(data);
+    var range = sheet.getRange(2, 1, data.length, 9);
+    range.clearDataValidations();
+    range.setValues(data);
   }
 }
 
 function _seedSperrungen(ss) {
   var sheet = ss.getSheetByName(CONFIG.SHEET_SPERRUNGEN);
   if (!sheet) return;
-  if (sheet.getLastRow() >= 2) return;
 
   var data = [];
   for (var i = 0; i < SEED_SPERRUNGEN.length; i++) {
@@ -227,7 +231,9 @@ function _seedSperrungen(ss) {
     data.push([datum, startzeit, endzeit, row[3], row[4]]);
   }
   if (data.length > 0) {
-    sheet.getRange(2, 1, data.length, 5).setValues(data);
+    var range = sheet.getRange(2, 1, data.length, 5);
+    range.clearDataValidations();
+    range.setValues(data);
   }
 }
 

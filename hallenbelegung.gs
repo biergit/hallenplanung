@@ -657,7 +657,8 @@ function createBelegungsplanSheet(ss, sep, arrSep) {
   // QH/QA: QUERY aus Eingabe, QS: COUNTA-gesicherte Sperrungen-QUERY
   // dummy: 9 leere Werte, sortiert ans Ende
 
-  var qBase = 'QUERY({Eingabe!A2:J}' + sep;
+  var qBase = 'QUERY({Eingabe!A2:I' + arrSep +
+    ' Eingabe!J2:J}' + sep;
 
   var sqlHeim = '"SELECT Col3, Col10, Col4, Col7, Col1, Col6, Col2, Col8, Col9 ' +
     'WHERE Col3 IS NOT NULL AND Col6=\'Heim\'"';

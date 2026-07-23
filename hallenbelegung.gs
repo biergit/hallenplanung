@@ -71,15 +71,15 @@ function setupSheet() {
   // Sperrungen: upgraden wenn vorhanden, sonst neu
   var sperrSheet = ss.getSheetByName(CONFIG.SHEET_SPERRUNGEN);
   if (sperrSheet) {
-    upgradeSperrungenSheet(ss, sep);
+    upgradeSperrungenSheet(ss);
   } else {
-    createSperrungenSheet(ss, sep);
+    createSperrungenSheet(ss);
   }
 
   // Eingabe: upgraden wenn vorhanden, sonst neu
   var eingabeSheet = ss.getSheetByName(CONFIG.SHEET_EINGABE);
   if (eingabeSheet) {
-    upgradeEingabeSheet(ss, sep);
+    upgradeEingabeSheet(ss);
   } else {
     createEingabeSheet(ss, sep);
   }
@@ -128,7 +128,7 @@ function resetAll() {
   if (oldPlan) ss.deleteSheet(oldPlan);
 
   createSetupSheet(ss, sep);
-  createSperrungenSheet(ss, sep);
+  createSperrungenSheet(ss);
   createEingabeSheet(ss, sep);
   createBelegungsplanSheet(ss, sep);
   createTrigger();
@@ -162,7 +162,7 @@ function createSheetsOnly() {
   if (oldPlan) ss.deleteSheet(oldPlan);
 
   createSetupSheet(ss, sep);
-  createSperrungenSheet(ss, sep);
+  createSperrungenSheet(ss);
   createEingabeSheet(ss, sep);
   createBelegungsplanSheet(ss, sep);
   createTrigger();
@@ -422,11 +422,11 @@ function createSetupSheet(ss, sep) {
 
 // -------------------- Sperrungen-Blatt --------------------
 
-function createSperrungenSheet(ss, sep) {
+function createSperrungenSheet(ss) {
   var sheet = ss.insertSheet(CONFIG.SHEET_SPERRUNGEN, 1);
 
-  var headers = ['Datum', 'Startzeit', 'Endzeit', 'Bereich', 'Kommentar', 'Wochentag', 'Zeitraum Anzeige'];
-  sheet.getRange(1, 1, 1, 7)
+  var headers = ['Datum', 'Startzeit', 'Endzeit', 'Bereich', 'Kommentar'];
+  sheet.getRange(1, 1, 1, 5)
     .setValues([headers])
     .setFontWeight('bold')
     .setBackground('#E8E8E8');
@@ -450,16 +450,7 @@ function createSperrungenSheet(ss, sep) {
 
   sheet.getRange(2, 1, 1000, 1).setNumberFormat('DD.MM.YYYY');
 
-  // F: Wochentag (Hilfsspalte für QUERY im Hallen/Spielplan)
-  sheet.getRange(2, 6, 1000, 1).setFormula('=IF(A2="";;TEXT(A2' + sep + '"ddd"))');
-
-  // G: Zeitraum-Anzeige (Hilfsspalte für QUERY im Hallen/Spielplan)
-  sheet.getRange(2, 7, 1000, 1).setFormula(
-    '=IF(A2="";;IF(B2="";"ganztägig";TEXT(B2' + sep + '"HH:MM")&" - "&TEXT(C2' + sep + '"HH:MM")))');
-
-  sheet.hideColumns(6, 2);
-
-  protectRange(sheet, 'A1:G1');
+  protectRange(sheet, 'A1:E1');
 
   sheet.setColumnWidth(1, 120);
   sheet.setColumnWidth(2, 100);
@@ -476,38 +467,33 @@ function createSperrungenSheet(ss, sep) {
   );
 }
 
-function upgradeSperrungenSheet(ss, sep) {
+function upgradeSperrungenSheet(ss) {
   var sheet = ss.getSheetByName(CONFIG.SHEET_SPERRUNGEN);
   if (!sheet) return;
 
+  sheet.showColumns(6, 2);
   var lastRow = sheet.getLastRow();
-  var maxRow = Math.max(lastRow, 2);
-
-  // Spalte F: Wochentag (Hilfsspalte für QUERY)
-  sheet.getRange(1, 6).setValue('Wochentag').setFontWeight('bold').setBackground('#E8E8E8');
-  sheet.getRange(2, 6, maxRow - 1, 1).setFormula('=IF(A2="";;TEXT(A2' + sep + '"ddd"))');
-
-  // Spalte G: Zeitraum-Anzeige (Hilfsspalte für QUERY)
-  sheet.getRange(1, 7).setValue('Zeitraum Anzeige').setFontWeight('bold').setBackground('#E8E8E8');
-  sheet.getRange(2, 7, maxRow - 1, 1).setFormula(
-    '=IF(A2="";;IF(B2="";"ganztägig";TEXT(B2' + sep + '"HH:MM")&" - "&TEXT(C2' + sep + '"HH:MM")))');
-
-  sheet.hideColumns(6, 2);
-  protectRange(sheet, 'A1:G1');
+  if (lastRow >= 1) {
+    sheet.getRange(1, 6, 1, 2).clearContent();
+    if (lastRow >= 2) {
+      sheet.getRange(2, 6, lastRow - 1, 2).clearContent();
+    }
+  }
+  protectRange(sheet, 'A1:E1');
 }
 
-function upgradeEingabeSheet(ss, sep) {
+function upgradeEingabeSheet(ss) {
   var sheet = ss.getSheetByName(CONFIG.SHEET_EINGABE);
   if (!sheet) return;
 
+  sheet.showColumns(10);
   var lastRow = sheet.getLastRow();
-  var maxRow = Math.max(lastRow, 2);
-
-  // Spalte J: Wochentag (Hilfsspalte für QUERY)
-  sheet.getRange(1, 10).setValue('Wochentag').setFontWeight('bold').setBackground('#E8E8E8');
-  sheet.getRange(2, 10, maxRow - 1, 1).setFormula('=IF(C2="";;TEXT(C2' + sep + '"ddd"))');
-
-  sheet.hideColumns(10, 1);
+  if (lastRow >= 1) {
+    sheet.getRange(1, 10).clearContent();
+    if (lastRow >= 2) {
+      sheet.getRange(2, 10, lastRow - 1, 1).clearContent();
+    }
+  }
 }
 
 // -------------------- Eingabe-Blatt --------------------
@@ -587,13 +573,7 @@ function createEingabeSheet(ss, sep) {
   rules.push(heimRule, auswaertsRule, fehlerRule, warnungRule);
   sheet.setConditionalFormatRules(rules);
 
-  protectRange(sheet, 'A1:J1');
-
-  // Spalte J: Wochentag (Hilfsspalte für QUERY im Hallen/Spielplan)
-  sheet.getRange(1, 10).setValue('Wochentag');
-  sheet.getRange(1, 10).setFontWeight('bold').setBackground('#E8E8E8');
-  sheet.getRange(2, 10, 1000, 1).setFormula('=IF(C2="";;TEXT(C2' + sep + '"ddd"))');
-  sheet.hideColumns(10, 1);
+  protectRange(sheet, 'A1:I1');
 
   sheet.setColumnWidth(1, 180);
   sheet.setColumnWidth(2, 200);
@@ -612,18 +592,6 @@ function createEingabeSheet(ss, sep) {
     '❌ = Validierungsfehler\n' +
     '⚠️ = Benachbartes Team spielt am selben Tag'
   );
-
-  sheet.getRange(1, 10).setValue(
-    'Hinweise:\n' +
-    '- Nur Di/Mi/Fr/Sa/So\n' +
-    '- Mi: nur "Kleine Halle"\n' +
-    '- Di+Fr: max. 2 Bereiche\n' +
-    '- Heimspiel: Bereich nötig\n' +
-    '- Auswärtsspiel: Bereich leer'
-  );
-  sheet.getRange(1, 10).setFontSize(9);
-  sheet.getRange(1, 10).setFontColor('#999999');
-  sheet.setColumnWidth(10, 220);
 }
 
 // -------------------- Belegungsplan-Blatt --------------------
@@ -1137,9 +1105,10 @@ function protectRange(sheet, rangeA1) {
 }
 
 function createTrigger() {
-  // Alle bestehenden Trigger löschen (auch Altlasten aus früheren Versionen)
   ScriptApp.getProjectTriggers().forEach(function(t) {
-    ScriptApp.deleteTrigger(t);
+    if (t.getHandlerFunction() === 'handleEdit') {
+      ScriptApp.deleteTrigger(t);
+    }
   });
 
   ScriptApp.newTrigger('handleEdit')

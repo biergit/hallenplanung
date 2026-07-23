@@ -187,6 +187,7 @@ function seedSheets(ss) {
   }
   if (SEED_EINGABE.length > 0) _seedEingabe(ss);
   if (SEED_SPERRUNGEN.length > 0) _seedSperrungen(ss);
+  validateSperrungen();
   validateAllEntries();
 }
 
@@ -428,8 +429,8 @@ function createSetupSheet(ss, sep) {
 function createSperrungenSheet(ss) {
   var sheet = ss.insertSheet(CONFIG.SHEET_SPERRUNGEN, 1);
 
-  var headers = ['Datum', 'Startzeit', 'Endzeit', 'Bereich', 'Kommentar'];
-  sheet.getRange(1, 1, 1, 5)
+  var headers = ['Datum', 'Startzeit', 'Endzeit', 'Bereich', 'Kommentar', '\u26A0\uFE0F Status'];
+  sheet.getRange(1, 1, 1, 6)
     .setValues([headers])
     .setFontWeight('bold')
     .setBackground('#E8E8E8');
@@ -453,7 +454,7 @@ function createSperrungenSheet(ss) {
 
   sheet.getRange(2, 1, CONFIG.MAX_ROWS, 1).setNumberFormat('DD.MM.YYYY');
 
-  protectRange(sheet, 'A1:E1');
+  protectRange(sheet, 'A1:F1');
 
   sheet.setColumnWidth(1, 120);
   sheet.setColumnWidth(2, 100);
@@ -466,6 +467,7 @@ function createSperrungenSheet(ss) {
   sheet.getRange(1, 5).setNote(
     'Startzeit/Endzeit optional (Format HH:MM).\n' +
     'Ohne Zeitangabe = ganztägig gesperrt.\n' +
+    'Nur Endzeit ohne Startzeit = nicht erlaubt.\n' +
     '"Alle" = gesamte Halle an diesem Tag/in diesem Zeitraum gesperrt.'
   );
 }
@@ -482,7 +484,8 @@ function upgradeSperrungenSheet(ss) {
       sheet.getRange(2, 6, lastRow - 1, 2).clearContent();
     }
   }
-  protectRange(sheet, 'A1:E1');
+  sheet.getRange(1, 6).setValue('\u26A0\uFE0F Status').setFontWeight('bold').setBackground('#E8E8E8');
+  protectRange(sheet, 'A1:F1');
 }
 
 function upgradeEingabeSheet(ss) {
@@ -715,15 +718,16 @@ function generatePlan() {
         for (var i = 0; i < data.length; i++) {
           var row = data[i];
           if (!isValidDate(row[0])) continue;
+          if (isValidTime(row[2]) && !isValidTime(row[1])) continue;
           var zeitraum = '';
           if (!isValidTime(row[1]) && !isValidTime(row[2])) {
             zeitraum = 'ganztägig';
           } else if (isValidTime(row[1]) && isValidTime(row[2])) {
             zeitraum = formatTime(row[1]) + ' - ' + formatTime(row[2]);
           } else if (isValidTime(row[1])) {
-            zeitraum = formatTime(row[1]);
+            zeitraum = 'ab ' + formatTime(row[1]);
           } else {
-            zeitraum = 'ganztägig';
+            zeitraum = 'bis ' + formatTime(row[2]);
           }
           rows.push([
             row[0],
@@ -809,6 +813,7 @@ function handleEdit(e) {
     generatePlan();
   } else if (name === CONFIG.SHEET_SPERRUNGEN) {
     if (e.range.getRow() < 2) return;
+    validateSperrungen();
     validateAllEntries();
     generatePlan();
   } else if (name === CONFIG.SHEET_PLAN) {
@@ -871,13 +876,24 @@ function validateAllEntries() {
 
   for (var i = 0; i < data.length; i++) {
     var row = data[i];
+    var team = row[0];
     var datum = row[2];
     var startzeit = row[3];
     var endzeit = row[4];
     var ha = row[5];
     var bereich = row[6];
 
-    if (!isValidDate(datum)) continue;
+    if (!team) {
+      statusMessages[i].push('❌ Team fehlt');
+    }
+    if (!isValidDate(datum)) {
+      statusMessages[i].push('❌ Datum fehlt');
+      continue;
+    }
+    if (ha !== 'Heim' && ha !== 'Auswärts') {
+      statusMessages[i].push('❌ H/A fehlt');
+      continue;
+    }
 
     var weekday = datum.getDay();
     var dateKey = datumToKey(datum);
@@ -957,6 +973,28 @@ function validateAllEntries() {
               }
             }
           }
+        } else if (isValidTime(sStart)) {
+          // Sperrung ab sStart bis Tagesende
+          if (isValidTime(startzeit) && isValidTime(endzeit)) {
+            var bs = timeToFraction(startzeit), be = timeToFraction(endzeit);
+            var ss = timeToFraction(sStart), se = 1;
+            if (bs !== null && be !== null && ss !== null) {
+              if (bs < se && be > ss) {
+                var msg = '❌ Überschneidung mit Sperrung (ab ' + formatTime(sStart) + ')';
+                if (sperrungen[s].kommentar) msg += ': ' + sperrungen[s].kommentar;
+                statusMessages[i].push(msg);
+              }
+            }
+          } else {
+            var msg = '❌ ';
+            if (sperrungen[s].bereich === 'Alle') {
+              msg += 'Tag ab ' + formatTime(sStart) + ' gesperrt';
+            } else {
+              msg += '"' + sperrungen[s].bereich + '" ab ' + formatTime(sStart) + ' gesperrt';
+            }
+            if (sperrungen[s].kommentar) msg += ': ' + sperrungen[s].kommentar;
+            statusMessages[i].push(msg);
+          }
         } else {
           var msg = '❌ ';
           if (sperrungen[s].bereich === 'Alle') {
@@ -991,6 +1029,32 @@ function validateAllEntries() {
   }
   if (statusValues.length > 0) {
     sheet.getRange(2, 9, statusValues.length, 1).setValues(statusValues);
+  }
+}
+
+function validateSperrungen() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sheet = ss.getSheetByName(CONFIG.SHEET_SPERRUNGEN);
+  if (!sheet) return;
+
+  var lastRow = sheet.getLastRow();
+  if (lastRow < 2) return;
+
+  var data = sheet.getRange(2, 1, lastRow - 1, 5).getValues();
+  var statusValues = [];
+  for (var i = 0; i < data.length; i++) {
+    var row = data[i];
+    var messages = [];
+    if (!isValidDate(row[0]) && row[0]) {
+      messages.push('❌ Ungültiges Datum');
+    }
+    if (isValidTime(row[2]) && !isValidTime(row[1])) {
+      messages.push('❌ Endzeit ohne Startzeit');
+    }
+    statusValues.push([messages.join(' | ')]);
+  }
+  if (statusValues.length > 0) {
+    sheet.getRange(2, 6, statusValues.length, 1).setValues(statusValues);
   }
 }
 

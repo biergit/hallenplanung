@@ -459,7 +459,8 @@ function createBelegungsplanSheet(ss, sep, arrSep) {
     'WHERE Col1 IS NOT NULL ORDER BY Col1, Col2"' + sep + ' 0)';
 
   var dummyRow = '{0' + arrSep + '0' + arrSep + '0' + arrSep + '0' + arrSep + '0' + arrSep + '0' + arrSep + '0' + arrSep + '0' + arrSep + '0}';
-  var sperrBlock = 'IF(A2' + sep + ' ' + QS + sep + ' ' + dummyRow + ')';
+  var sperrHasData = 'COUNTA(\'' + sperrName + '\'!A2:A)>0';
+  var sperrBlock = 'IF(AND(A2' + sep + ' ' + sperrHasData + ')' + sep + ' ' + QS + sep + ' ' + dummyRow + ')';
   var source = 'IF(A1' + sep + ' {' + QH + sep + ' ' + sperrBlock + '}' + sep + ' {' + QA + sep + ' ' + sperrBlock + '})';
 
   var formula = '=QUERY(' + source + sep +

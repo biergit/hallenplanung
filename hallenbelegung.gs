@@ -49,6 +49,11 @@ var CONFIG = {
   // Standard-Spieldauer in Stunden (konfigurierbar in Setup!F1)
   GAME_DURATION_HOURS: 4
 };
+// --- SEED DATA BEGIN ---
+var SEED_SETUP = JSON.parse('[]');
+var SEED_EINGABE = JSON.parse('[]');
+var SEED_SPERRUNGEN = JSON.parse('[]');
+// --- SEED DATA END ---
 
 // ==================== SETUP ====================
 
@@ -85,6 +90,7 @@ function setupSheet() {
   }
 
   createTrigger();
+  seedSheets(ss);
 
   var msg = 'Setup abgeschlossen!\n\n' +
     'Blätter:\n' +
@@ -100,6 +106,152 @@ function setupSheet() {
   } catch (e) {
     Logger.log(msg);
   }
+}
+
+// -------------------- Seed / Reset --------------------
+
+function resetAll() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var locale = ss.getSpreadsheetLocale();
+  var isGerman = locale.startsWith('de');
+  var sep = isGerman ? ';' : ',';
+  var arrSep = isGerman ? '\\' : ',';
+
+  var sheetNames = [CONFIG.SHEET_PLAN, CONFIG.SHEET_EINGABE, CONFIG.SHEET_SPERRUNGEN, CONFIG.SHEET_SETUP];
+  sheetNames.forEach(function(name) {
+    var sheet = ss.getSheetByName(name);
+    if (sheet) ss.deleteSheet(sheet);
+  });
+  // Alten Reiter-Namen aufräumen
+  var oldPlan = ss.getSheetByName('Belegungsplan');
+  if (oldPlan) ss.deleteSheet(oldPlan);
+
+  createSetupSheet(ss, sep);
+  createSperrungenSheet(ss, sep);
+  createEingabeSheet(ss, sep);
+  createBelegungsplanSheet(ss, sep, arrSep);
+  createTrigger();
+  seedSheets(ss);
+
+  var msg = 'Alles neu angelegt inkl. Seed-Daten.\n\n' +
+    '  1. ' + CONFIG.SHEET_SETUP + '\n' +
+    '  2. ' + CONFIG.SHEET_SPERRUNGEN + '\n' +
+    '  3. ' + CONFIG.SHEET_EINGABE + '\n' +
+    '  4. ' + CONFIG.SHEET_PLAN;
+  try {
+    SpreadsheetApp.getUi().alert(msg);
+  } catch (e) {
+    Logger.log(msg);
+  }
+}
+
+function createSheetsOnly() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var locale = ss.getSpreadsheetLocale();
+  var isGerman = locale.startsWith('de');
+  var sep = isGerman ? ';' : ',';
+  var arrSep = isGerman ? '\\' : ',';
+
+  var sheetNames = [CONFIG.SHEET_PLAN, CONFIG.SHEET_EINGABE, CONFIG.SHEET_SPERRUNGEN, CONFIG.SHEET_SETUP];
+  sheetNames.forEach(function(name) {
+    var sheet = ss.getSheetByName(name);
+    if (sheet) ss.deleteSheet(sheet);
+  });
+  var oldPlan = ss.getSheetByName('Belegungsplan');
+  if (oldPlan) ss.deleteSheet(oldPlan);
+
+  createSetupSheet(ss, sep);
+  createSperrungenSheet(ss, sep);
+  createEingabeSheet(ss, sep);
+  createBelegungsplanSheet(ss, sep, arrSep);
+  createTrigger();
+
+  var msg = 'Blätter neu angelegt (ohne Seed-Daten).';
+  try {
+    SpreadsheetApp.getUi().alert(msg);
+  } catch (e) {
+    Logger.log(msg);
+  }
+}
+
+function seedSheets(ss) {
+  if (!ss) ss = SpreadsheetApp.getActiveSpreadsheet();
+  if (SEED_SETUP.length > 0) _seedSetup(ss);
+  if (SEED_EINGABE.length > 0) _seedEingabe(ss);
+  if (SEED_SPERRUNGEN.length > 0) _seedSperrungen(ss);
+}
+
+function _seedSetup(ss) {
+  var sheet = ss.getSheetByName(CONFIG.SHEET_SETUP);
+  if (!sheet) return;
+  if (sheet.getLastRow() >= 2) return; // Bereits Daten vorhanden
+
+  var data = [];
+  for (var i = 0; i < SEED_SETUP.length; i++) {
+    data.push([parseInt(SEED_SETUP[i][0]), SEED_SETUP[i][1]]);
+  }
+  if (data.length > 0) {
+    sheet.getRange(2, 1, data.length, 2).setValues(data);
+  }
+}
+
+function _seedEingabe(ss) {
+  var sheet = ss.getSheetByName(CONFIG.SHEET_EINGABE);
+  if (!sheet) return;
+  if (sheet.getLastRow() >= 2) return;
+
+  var data = [];
+  for (var i = 0; i < SEED_EINGABE.length; i++) {
+    var row = SEED_EINGABE[i];
+    var datum = _parseDate(row[0]);
+    var startzeit = _parseTime(row[1]);
+    data.push([datum, startzeit, '', row[2], row[3], row[4], row[5], row[6], '']);
+  }
+  if (data.length > 0) {
+    sheet.getRange(2, 1, data.length, 9).setValues(data);
+  }
+}
+
+function _seedSperrungen(ss) {
+  var sheet = ss.getSheetByName(CONFIG.SHEET_SPERRUNGEN);
+  if (!sheet) return;
+  if (sheet.getLastRow() >= 2) return;
+
+  var data = [];
+  for (var i = 0; i < SEED_SPERRUNGEN.length; i++) {
+    var row = SEED_SPERRUNGEN[i];
+    var datum = _parseDate(row[0]);
+    var startzeit = _parseTime(row[1]);
+    var endzeit = _parseTime(row[2]);
+    data.push([datum, startzeit, endzeit, row[3], row[4]]);
+  }
+  if (data.length > 0) {
+    sheet.getRange(2, 1, data.length, 5).setValues(data);
+  }
+}
+
+function _parseDate(str) {
+  if (!str || typeof str !== 'string') return '';
+  var parts = str.split('.');
+  if (parts.length === 3) {
+    return new Date(parseInt(parts[2]), parseInt(parts[1]) - 1, parseInt(parts[0]));
+  }
+  return '';
+}
+
+function _parseTime(str) {
+  if (!str || typeof str !== 'string') return '';
+  var parts = str.split(':');
+  if (parts.length === 2) {
+    return (parseInt(parts[0]) * 60 + parseInt(parts[1])) / 1440;
+  }
+  var num = parseFloat(str.replace(',', '.'));
+  if (!isNaN(num) && num > 0 && num < 24) {
+    var h = Math.floor(num);
+    var m = Math.round((num - h) * 60);
+    return (h * 60 + m) / 1440;
+  }
+  return '';
 }
 
 // -------------------- Setup-Blatt --------------------
@@ -853,7 +1005,11 @@ function createTrigger() {
 function onOpen() {
   var ui = SpreadsheetApp.getUi();
   ui.createMenu('Hallenbelegung')
-    .addItem('Setup (neu einrichten)', 'setupSheet')
+    .addItem('Setup (Daten erhalten)', 'setupSheet')
+    .addItem('Alles neu + Seed-Daten', 'resetAll')
+    .addItem('Nur Blätter neu (leer)', 'createSheetsOnly')
+    .addSeparator()
+    .addItem('Seed-Daten einfügen', 'seedSheets')
     .addItem('Jetzt validieren', 'validateAllEntries')
     .addToUi();
 }

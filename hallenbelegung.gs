@@ -64,13 +64,6 @@ function setupSheet() {
   var sep = isGerman ? ';' : ',';
   var arrSep = isGerman ? '\\' : ',';
 
-  // Plan sheet immer neu (auch alten Reiter-Namen aufräumen)
-  var oldPlan = ss.getSheetByName('Belegungsplan');
-  if (oldPlan) ss.deleteSheet(oldPlan);
-  var planSheet = ss.getSheetByName(CONFIG.SHEET_PLAN);
-  if (planSheet) ss.deleteSheet(planSheet);
-  createBelegungsplanSheet(ss, sep, arrSep);
-
   // Setup: nur anlegen, wenn nicht vorhanden
   if (!ss.getSheetByName(CONFIG.SHEET_SETUP)) {
     createSetupSheet(ss, sep);
@@ -91,6 +84,13 @@ function setupSheet() {
   } else {
     createEingabeSheet(ss, sep);
   }
+
+  // Plan sheet immer neu (auch alten Reiter-Namen aufräumen)
+  var oldPlan = ss.getSheetByName('Belegungsplan');
+  if (oldPlan) ss.deleteSheet(oldPlan);
+  var planSheet = ss.getSheetByName(CONFIG.SHEET_PLAN);
+  if (planSheet) ss.deleteSheet(planSheet);
+  createBelegungsplanSheet(ss, sep, arrSep);
 
   createTrigger();
 
@@ -670,10 +670,9 @@ function createBelegungsplanSheet(ss, sep, arrSep) {
   var QH = 'IFERROR(' + qBase + sqlHeim + sep + ' 0)' + sep + ' ' + dummyRow + ')';
   var QA = 'IFERROR(' + qBase + sqlAll + sep + ' 0)' + sep + ' ' + dummyRow + ')';
 
-  var QS = 'IF(COUNTA(\'' + sperrName + '\'!A2:A)=0' + sep + ' ' + dummyRow + sep +
-    ' IFERROR(QUERY(\'' + sperrName + '\'!A2:G' + sep +
+  var QS = 'IFERROR(QUERY(\'' + sperrName + '\'!A2:G' + sep +
     '"SELECT Col1, Col6, Col2, Col4, \' \', \' \', Col7, Col5, \' \' ' +
-    'WHERE Col1 IS NOT NULL AND Col4 IS NOT NULL"' + sep + ' 0)' + sep + ' ' + dummyRow + '))';
+    'WHERE Col1 IS NOT NULL AND Col4 IS NOT NULL"' + sep + ' 0)' + sep + ' ' + dummyRow + ')';
 
   var formula = '=QUERY(SORT({' +
     'IF(A1' + sep + ' ' + QH + sep + ' ' + QA + ')' + sep +

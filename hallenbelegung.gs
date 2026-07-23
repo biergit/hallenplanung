@@ -205,7 +205,7 @@ function _seedEingabe(ss) {
     var row = SEED_EINGABE[i];
     var datum = _parseDate(row[0]);
     var startzeit = _parseTime(row[1]);
-    data.push([datum, startzeit, '', row[2], row[3], row[4], row[5], row[6], '']);
+    data.push([datum, startzeit, '', row[3], row[4], row[5], row[6], row[7], '']);
   }
   if (data.length > 0) {
     sheet.getRange(2, 1, data.length, 9).setValues(data);
@@ -1000,16 +1000,80 @@ function createTrigger() {
     .create();
 }
 
-// ==================== MENÜ ====================
+// ==================== TSV-EXPORT ====================
 
-function onOpen() {
-  var ui = SpreadsheetApp.getUi();
-  ui.createMenu('Hallenbelegung')
-    .addItem('Setup (Daten erhalten)', 'setupSheet')
-    .addItem('Alles neu + Seed-Daten', 'resetAll')
-    .addItem('Nur Blätter neu (leer)', 'createSheetsOnly')
-    .addSeparator()
-    .addItem('Seed-Daten einfügen', 'seedSheets')
-    .addItem('Jetzt validieren', 'validateAllEntries')
-    .addToUi();
+function downloadTSV() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var result = '';
+
+  // Setup Teams
+  result += '# data/setup_teams.tsv\n';
+  result += 'Rang\tGruppe\tTeamname\tKurzname\n';
+  var setupSheet = ss.getSheetByName(CONFIG.SHEET_SETUP);
+  if (setupSheet) {
+    var lastRow = Math.max(setupSheet.getLastRow(), 1);
+    if (lastRow >= 2) {
+      var data = setupSheet.getRange(2, 1, lastRow - 1, 4).getValues();
+      for (var i = 0; i < data.length; i++) {
+        if (data[i][0]) {
+          result += [data[i][0], data[i][1], data[i][2], data[i][3]].join('\t') + '\n';
+        }
+      }
+    }
+  }
+  result += '\n';
+
+  // Eingabe
+  result += '# data/eingabe.tsv\n';
+  result += 'Datum\tStartzeit\tspäteste Endzeit\tTeam\tHeim/Auswärts\tGegner\tBereich\tKommentar\n';
+  var eingabeSheet = ss.getSheetByName(CONFIG.SHEET_EINGABE);
+  if (eingabeSheet) {
+    var lastRow2 = Math.max(eingabeSheet.getLastRow(), 1);
+    if (lastRow2 >= 2) {
+      var data2 = eingabeSheet.getRange(2, 1, lastRow2 - 1, 9).getValues();
+      for (var j = 0; j < data2.length; j++) {
+        if (data2[j][0]) {
+          var d = data2[j][0];
+          var dateStr = d instanceof Date ? ('0' + d.getDate()).slice(-2) + '.' + ('0' + (d.getMonth() + 1)).slice(-2) + '.' + d.getFullYear() : d;
+          var st = _formatTime(data2[j][1]);
+          var et = _formatTime(data2[j][2]);
+          result += [dateStr, st, et, data2[j][3], data2[j][4], data2[j][5], data2[j][6], data2[j][7]].join('\t') + '\n';
+        }
+      }
+    }
+  }
+  result += '\n';
+
+  // Sperrungen
+  result += '# data/sperrungen.tsv\n';
+  result += 'Datum\tStartzeit\tEndzeit\tBereich\tKommentar\n';
+  var sperrSheet = ss.getSheetByName(CONFIG.SHEET_SPERRUNGEN);
+  if (sperrSheet) {
+    var lastRow3 = Math.max(sperrSheet.getLastRow(), 1);
+    if (lastRow3 >= 2) {
+      var data3 = sperrSheet.getRange(2, 1, lastRow3 - 1, 5).getValues();
+      for (var k = 0; k < data3.length; k++) {
+        if (data3[k][0]) {
+          var ds = data3[k][0];
+          var dateStr = ds instanceof Date ? ('0' + ds.getDate()).slice(-2) + '.' + ('0' + (ds.getMonth() + 1)).slice(-2) + '.' + ds.getFullYear() : ds;
+          result += [dateStr, _formatTime(data3[k][1]), _formatTime(data3[k][2]), data3[k][3], data3[k][4]].join('\t') + '\n';
+        }
+      }
+    }
+  }
+
+  Logger.log(result);
+}
+
+function _formatTime(val) {
+  if (typeof val === 'number' && val >= 0 && val < 1) {
+    var totalMin = Math.round(val * 1440);
+    var h = Math.floor(totalMin / 60);
+    var m = totalMin % 60;
+    return ('0' + h).slice(-2) + ':' + ('0' + m).slice(-2);
+  }
+  if (val instanceof Date) {
+    return ('0' + val.getHours()).slice(-2) + ':' + ('0' + val.getMinutes()).slice(-2);
+  }
+  return val || '';
 }

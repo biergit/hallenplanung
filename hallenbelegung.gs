@@ -459,12 +459,13 @@ function createBelegungsplanSheet(ss, sep, arrSep) {
   var QS = 'IF(COUNTA(\'' + sperrName + '\'!A2:A)=0' + sep + ' ' + dummyRow + sep +
     ' QUERY(\'' + sperrName + '\'!A2:G' + sep +
     '"SELECT Col1, Col6, Col2, Col4, \'GESPERRT\', \' \', Col7, Col5, \'Sperrung\' ' +
-    'WHERE Col1 IS NOT NULL"' + sep + ' 0))';
+    'WHERE Col1 IS NOT NULL AND Col4 IS NOT NULL"' + sep + ' 0))';
 
-  var formula = '=SORT({' +
+  var formula = '=QUERY(SORT({' +
     'IF(A1' + sep + ' ' + QH + sep + ' ' + QA + ')' + sep +
     ' IF(A2' + sep + ' ' + QS + sep + ' ' + dummyRow + ')' +
-    '}' + sep + ' 1' + sep + ' TRUE' + sep + ' 3' + sep + ' TRUE)';
+    '}' + sep + ' 1' + sep + ' TRUE' + sep + ' 3' + sep + ' TRUE)' + sep +
+    '"SELECT * WHERE Col1 IS NOT NULL"' + sep + ' 0)';
 
   sheet.getRange(4, 1).setFormula(formula);
 

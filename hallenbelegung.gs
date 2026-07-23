@@ -439,33 +439,32 @@ function createBelegungsplanSheet(ss, sep, arrSep) {
     .setFontWeight('bold')
     .setBackground('#E8E8E8');
 
-  // QUERY-Bausteine: QH = nur Heimspiele, QA = alle Spiele, QS = Sperrungen
-  // Formel: QUERY({QH_or_QA; IF(A2;QS;dummy)}; "SELECT * WHERE Col1>0 ORDER BY Col1,Col2"; 0)
-  // QS verwendet Hilfsspalten F (Wochentag) und G (Zeitraum) aus dem Sperrungen-Blatt
+  // Formel: =SORT({IF(A1; QH; QA); IF(A2; QS; dummy)}; 1; TRUE; 3; TRUE)
+  // QH/QA: QUERY aus Eingabe, QS: COUNTA-gesicherte Sperrungen-QUERY
+  // dummy: 9 leere Werte, sortiert ans Ende
 
   var qBase = 'QUERY({Eingabe!A2:I' + arrSep +
     ' ARRAYFORMULA(TEXT(Eingabe!A2:A' + sep + '"ddd"))}' + sep;
 
   var sqlHeim = '"SELECT Col1, Col10, Col2, Col7, Col4, Col5, Col6, Col8, Col9 ' +
-    'WHERE Col1 IS NOT NULL AND Col5=\'Heim\' ORDER BY Col1, Col2"';
+    'WHERE Col1 IS NOT NULL AND Col5=\'Heim\'"';
   var sqlAll = '"SELECT Col1, Col10, Col2, Col7, Col4, Col5, Col6, Col8, Col9 ' +
-    'WHERE Col1 IS NOT NULL ORDER BY Col1, Col2"';
+    'WHERE Col1 IS NOT NULL"';
 
   var QH = qBase + sqlHeim + sep + ' 0)';
   var QA = qBase + sqlAll + sep + ' 0)';
 
-  var dummyRow = '{0' + arrSep + '0' + arrSep + '0' + arrSep + '0' + arrSep + '0' + arrSep + '0' + arrSep + '0' + arrSep + '0' + arrSep + '0}';
+  var dummyRow = '{""' + arrSep + '""' + arrSep + '""' + arrSep + '""' + arrSep + '""' + arrSep + '""' + arrSep + '""' + arrSep + '""' + arrSep + '""}';
 
   var QS = 'IF(COUNTA(\'' + sperrName + '\'!A2:A)=0' + sep + ' ' + dummyRow + sep +
     ' QUERY(\'' + sperrName + '\'!A2:G' + sep +
     '"SELECT Col1, Col6, Col2, Col4, \'GESPERRT\', \' \', Col7, Col5, \'Sperrung\' ' +
-    'WHERE Col1 IS NOT NULL ORDER BY Col1, Col2"' + sep + ' 0))';
+    'WHERE Col1 IS NOT NULL"' + sep + ' 0))';
 
-  var sperrBlock = 'IF(A2' + sep + ' ' + QS + sep + ' ' + dummyRow + ')';
-  var source = 'IF(A1' + sep + ' {' + QH + sep + ' ' + sperrBlock + '}' + sep + ' {' + QA + sep + ' ' + sperrBlock + '})';
-
-  var formula = '=QUERY(' + source + sep +
-    '"SELECT * WHERE Col1 > 0 ORDER BY Col1, Col2"' + sep + ' 0)';
+  var formula = '=SORT({' +
+    'IF(A1' + sep + ' ' + QH + sep + ' ' + QA + ')' + sep +
+    ' IF(A2' + sep + ' ' + QS + sep + ' ' + dummyRow + ')' +
+    '}' + sep + ' 1' + sep + ' TRUE' + sep + ' 3' + sep + ' TRUE)';
 
   sheet.getRange(4, 1).setFormula(formula);
 

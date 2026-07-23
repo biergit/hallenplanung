@@ -285,24 +285,16 @@ function upgradeSperrungenSheet(ss, sep) {
   if (!sheet) return;
 
   var lastRow = sheet.getLastRow();
-  var maxRow = Math.max(lastRow, 1);
+  var maxRow = Math.max(lastRow, 2);
 
   // Spalte F: Wochentag (Hilfsspalte für QUERY)
-  if (sheet.getRange(1, 6).getValue() !== 'Wochentag') {
-    sheet.getRange(1, 6).setValue('Wochentag').setFontWeight('bold').setBackground('#E8E8E8');
-    if (maxRow >= 2) {
-      sheet.getRange(2, 6, maxRow, 1).setFormula('=IF(A2="";;TEXT(A2' + sep + '"ddd"))');
-    }
-  }
+  sheet.getRange(1, 6).setValue('Wochentag').setFontWeight('bold').setBackground('#E8E8E8');
+  sheet.getRange(2, 6, maxRow - 1, 1).setFormula('=IF(A2="";;TEXT(A2' + sep + '"ddd"))');
 
   // Spalte G: Zeitraum-Anzeige (Hilfsspalte für QUERY)
-  if (sheet.getRange(1, 7).getValue() !== 'Zeitraum Anzeige') {
-    sheet.getRange(1, 7).setValue('Zeitraum Anzeige').setFontWeight('bold').setBackground('#E8E8E8');
-    if (maxRow >= 2) {
-      sheet.getRange(2, 7, maxRow, 1).setFormula(
-        '=IF(A2="";;IF(B2="";"ganztägig";TEXT(B2' + sep + '"HH:MM")&" - "&TEXT(C2' + sep + '"HH:MM")))');
-    }
-  }
+  sheet.getRange(1, 7).setValue('Zeitraum Anzeige').setFontWeight('bold').setBackground('#E8E8E8');
+  sheet.getRange(2, 7, maxRow - 1, 1).setFormula(
+    '=IF(A2="";;IF(B2="";"ganztägig";TEXT(B2' + sep + '"HH:MM")&" - "&TEXT(C2' + sep + '"HH:MM")))');
 
   sheet.hideColumns(6, 2);
   protectRange(sheet, 'A1:G1');

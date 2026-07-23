@@ -605,6 +605,11 @@ function validateAllEntries() {
       statusMessages[i].push('❌ Nur Di, Mi, Fr, Sa, So erlaubt');
     }
 
+    // 1a2. Bereich Pflicht für Heimspiele
+    if (ha === 'Heim' && !bereich) {
+      statusMessages[i].push('❌ Bereich fehlt');
+    }
+
     // 1b. Mittwoch: nur Kleine Halle
     if (weekday === 3 && ha === 'Heim' && bereich && bereich !== CONFIG.WEDNESDAY_AREA) {
       statusMessages[i].push('❌ Mittwochs nur "' + CONFIG.WEDNESDAY_AREA + '" buchbar');

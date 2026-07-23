@@ -440,7 +440,7 @@ function createBelegungsplanSheet(ss, sep, arrSep) {
     .setBackground('#E8E8E8');
 
   // QUERY-Bausteine: QH = nur Heimspiele, QA = alle Spiele, QS = Sperrungen
-  // Formel: =IF(A1; IF(A2; {QH; QS}; QH); IF(A2; {QA; QS}; QA))
+  // Formel: QUERY({QH_or_QA; IF(A2;QS;dummy)}; "SELECT * WHERE Col1>0 ORDER BY Col1,Col2"; 0)
   // QS verwendet Hilfsspalten F (Wochentag) und G (Zeitraum) aus dem Sperrungen-Blatt
 
   var qBase = 'QUERY({Eingabe!A2:I' + arrSep +
@@ -455,12 +455,15 @@ function createBelegungsplanSheet(ss, sep, arrSep) {
   var QA = qBase + sqlAll + sep + ' 0)';
 
   var QS = 'QUERY(\'' + sperrName + '\'!A2:G' + sep +
-    '"SELECT Col1, Col6, Col2, Col4, \'🔒 GESPERRT\', \'\', Col7, Col5, \'Sperrung\' ' +
+    '"SELECT Col1, Col6, Col2, Col4, \'GESPERRT\', \' \', Col7, Col5, \'Sperrung\' ' +
     'WHERE Col1 IS NOT NULL ORDER BY Col1, Col2"' + sep + ' 0)';
 
-  var formula = '=IF(A1' + sep +
-    ' IF(A2' + sep + ' IFERROR({' + QH + sep + ' ' + QS + '}' + sep + ' ' + QH + ')' + sep + ' ' + QH + ')' + sep +
-    ' IF(A2' + sep + ' IFERROR({' + QA + sep + ' ' + QS + '}' + sep + ' ' + QA + ')' + sep + ' ' + QA + '))';
+  var dummyRow = '{0' + arrSep + '0' + arrSep + '0' + arrSep + '0' + arrSep + '0' + arrSep + '0' + arrSep + '0' + arrSep + '0' + arrSep + '0}';
+  var sperrBlock = 'IF(A2' + sep + ' ' + QS + sep + ' ' + dummyRow + ')';
+  var source = 'IF(A1' + sep + ' {' + QH + sep + ' ' + sperrBlock + '}' + sep + ' {' + QA + sep + ' ' + sperrBlock + '})';
+
+  var formula = '=QUERY(' + source + sep +
+    '"SELECT * WHERE Col1 > 0 ORDER BY Col1, Col2"' + sep + ' 0)';
 
   sheet.getRange(4, 1).setFormula(formula);
 

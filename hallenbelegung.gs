@@ -458,7 +458,7 @@ function createBelegungsplanSheet(ss, sep, arrSep) {
 
   var QS = 'IF(COUNTA(\'' + sperrName + '\'!A2:A)=0' + sep + ' ' + dummyRow + sep +
     ' QUERY(\'' + sperrName + '\'!A2:G' + sep +
-    '"SELECT Col1, Col6, Col2, Col4, \'GESPERRT\', \' \', Col7, Col5, \'Sperrung\' ' +
+    '"SELECT Col1, Col6, Col2, Col4, \' \', \' \', Col7, Col5, \' \' ' +
     'WHERE Col1 IS NOT NULL AND Col4 IS NOT NULL"' + sep + ' 0))';
 
   var formula = '=QUERY(SORT({' +

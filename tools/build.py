@@ -6,13 +6,16 @@ Die Arrays ersetzen den Bereich zwischen den Markern:
     // --- SEED DATA BEGIN ---
     // --- SEED DATA END ---
 
-Usage: python3 tools/build.py
+Usage:
+    python3 tools/build.py            # TSV -> JSON einbetten
+    python3 tools/build.py --clean    # Alle SEED-Arrays leeren
 """
 
 import csv
 import json
 import os
 import re
+import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -21,6 +24,10 @@ GS_FILE = ROOT / "hallenbelegung.gs"
 
 BEGIN_MARKER = "// --- SEED DATA BEGIN ---"
 END_MARKER = "// --- SEED DATA END ---"
+
+EMPTY_BLOCK = """var SEED_SETUP = JSON.parse('[]');
+var SEED_EINGABE = JSON.parse('[]');
+var SEED_SPERRUNGEN = JSON.parse('[]');"""
 
 
 def read_tsv(path: Path) -> list[list[str]]:
@@ -43,7 +50,30 @@ def format_json_array(name: str, data: list[list[str]]) -> str:
     return f"var {name} = JSON.parse('{json_str}');"
 
 
+def write_block(block: str) -> None:
+    content = GS_FILE.read_text(encoding="utf-8")
+
+    if BEGIN_MARKER not in content or END_MARKER not in content:
+        print(f"Error: Marker {BEGIN_MARKER} / {END_MARKER} not found in {GS_FILE}")
+        return
+
+    pattern = re.compile(
+        re.escape(BEGIN_MARKER) + r"\n.*?\n" + re.escape(END_MARKER),
+        re.DOTALL,
+    )
+    replacement = BEGIN_MARKER + "\n" + block + "\n" + END_MARKER
+    new_content = pattern.sub(replacement, content)
+
+    GS_FILE.write_text(new_content, encoding="utf-8")
+    print(f"Wrote {GS_FILE}")
+
+
 def main():
+    if "--clean" in sys.argv:
+        write_block(EMPTY_BLOCK)
+        print("  All SEED arrays cleared.")
+        return
+
     setup = read_tsv(DATA_DIR / "setup_teams.tsv")
     eingabe = read_tsv(DATA_DIR / "eingabe.tsv")
     sperrungen = read_tsv(DATA_DIR / "sperrungen.tsv")
@@ -54,22 +84,7 @@ def main():
         format_json_array("SEED_SPERRUNGEN", sperrungen),
     ]
 
-    content = GS_FILE.read_text(encoding="utf-8")
-
-    if BEGIN_MARKER not in content or END_MARKER not in content:
-        print(f"Error: Marker {BEGIN_MARKER} / {END_MARKER} not found in {GS_FILE}")
-        return
-
-    new_block = "\n".join(seed_lines)
-    pattern = re.compile(
-        re.escape(BEGIN_MARKER) + r"\n.*?\n" + re.escape(END_MARKER),
-        re.DOTALL,
-    )
-    replacement = BEGIN_MARKER + "\n" + new_block + "\n" + END_MARKER
-    new_content = pattern.sub(replacement, content)
-
-    GS_FILE.write_text(new_content, encoding="utf-8")
-    print(f"Wrote {GS_FILE}")
+    write_block("\n".join(seed_lines))
     print(f"  SEED_SETUP: {len(setup)} rows")
     print(f"  SEED_EINGABE: {len(eingabe)} rows")
     print(f"  SEED_SPERRUNGEN: {len(sperrungen)} rows")

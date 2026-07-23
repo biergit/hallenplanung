@@ -665,10 +665,10 @@ function createBelegungsplanSheet(ss, sep, arrSep) {
   var sqlAll = '"SELECT Col3, Col10, Col4, Col7, Col1, Col6, Col2, Col8, Col9 ' +
     'WHERE Col3 IS NOT NULL"';
 
+  var dummyRow = '{""' + arrSep + '""' + arrSep + '""' + arrSep + '""' + arrSep + '""' + arrSep + '""' + arrSep + '""' + arrSep + '""' + arrSep + '""}';
+
   var QH = 'IFERROR(' + qBase + sqlHeim + sep + ' 0)' + sep + ' ' + dummyRow + ')';
   var QA = 'IFERROR(' + qBase + sqlAll + sep + ' 0)' + sep + ' ' + dummyRow + ')';
-
-  var dummyRow = '{""' + arrSep + '""' + arrSep + '""' + arrSep + '""' + arrSep + '""' + arrSep + '""' + arrSep + '""' + arrSep + '""' + arrSep + '""}';
 
   var QS = 'IF(COUNTA(\'' + sperrName + '\'!A2:A)=0' + sep + ' ' + dummyRow + sep +
     ' IFERROR(QUERY(\'' + sperrName + '\'!A2:G' + sep +

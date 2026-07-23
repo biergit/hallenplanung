@@ -465,8 +465,8 @@ function createBelegungsplanSheet(ss, sep, arrSep) {
     'WHERE Col1 IS NOT NULL ORDER BY Col1, Col2"' + sep + ' 0)';
 
   var formula = '=IF(A1' + sep +
-    ' IF(A2' + sep + ' {' + QH + sep + ' ' + QS + '}' + sep + ' ' + QH + ')' + sep +
-    ' IF(A2' + sep + ' {' + QA + sep + ' ' + QS + '}' + sep + ' ' + QA + '))';
+    ' IF(A2' + sep + ' IFERROR({' + QH + sep + ' ' + QS + '}' + sep + ' ' + QH + ')' + sep + ' ' + QH + ')' + sep +
+    ' IF(A2' + sep + ' IFERROR({' + QA + sep + ' ' + QS + '}' + sep + ' ' + QA + ')' + sep + ' ' + QA + '))';
 
   sheet.getRange(4, 1).setFormula(formula);
 

@@ -404,21 +404,10 @@ function createSetupSheet(ss, sep) {
     'Verfügbare Gruppen für das Dropdown.\nNeue Gruppen einfach in Spalte G ergänzen.'
   );
 
-  var exampleData = [
-    [1, 'Erwachsene'],
-    [2, 'Erwachsene'],
-    [3, 'Erwachsene'],
-    [1, 'Damen'],
-    [2, 'Damen'],
-    [1, 'Jugend 19'],
-    [1, 'Jugend 15']
-  ];
-  sheet.getRange(2, 1, exampleData.length, 2).setValues(exampleData);
-
-  sheet.getRange(2, 3, 999, 1)
+  sheet.getRange(2, 3, CONFIG.MAX_ROWS, 1)
     .setFormula('=IF(A2=""' + sep + ' ""' + sep + ' IF(A2=1' + sep + ' B2' + sep + ' B2 & " " & ROMAN(A2)))');
 
-  sheet.getRange(2, 4, 999, 1)
+  sheet.getRange(2, 4, CONFIG.MAX_ROWS, 1)
     .setFormula('=IF(A2=""' + sep + ' ""' + sep + ' LEFT(B2' + sep + '1) & IFERROR(REGEXEXTRACT(B2' + sep + '"\\d+")' + sep + ' "") & " " & ROMAN(A2))');
 
   var gruppeRule = SpreadsheetApp.newDataValidation()

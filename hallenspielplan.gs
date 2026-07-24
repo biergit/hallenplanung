@@ -1,7 +1,7 @@
 /**
- * Hallenbelegung Tischtennis
- * =========================
- * Google Apps Script zur Einrichtung und Verwaltung der Hallenbelegung.
+ * Hallen/Spielplanung Tischtennis
+ * ===============================
+ * Google Apps Script zur Einrichtung und Verwaltung der Hallen/Spielplanung.
  *
  * Verwendung:
  * 1. Neues Google Sheet erstellen (Tabellenkalkulation)
@@ -15,7 +15,7 @@
  *  Teams                             – Rang, Gruppe, generierter Teamname
  *  Sperrungen/Anderweitige Belegungen – Gesperrte Tage, Bereiche und Zeiträume
  *  Eingabe                           – Dateneingabe durch Mannschaftsführer
- *  Belegungsplan                     – Öffentliche Kalenderansicht
+ *  Hallen/Spielplan                  – Öffentliche Kalenderansicht
  */
 
 // ==================== KONFIGURATION ====================
@@ -93,9 +93,9 @@ function setupSheet() {
   if (oldPlan) ss.deleteSheet(oldPlan);
   var planSheet = ss.getSheetByName(CONFIG.SHEET_PLAN);
   if (planSheet) {
-    upgradeBelegungsplanSheet(ss, sep);
+    upgradeHallenSpielplanSheet(ss, sep);
   } else {
-    createBelegungsplanSheet(ss, sep);
+    createHallenSpielplanSheet(ss, sep);
   }
   generatePlan();
 
@@ -140,9 +140,9 @@ function resetAll() {
 
   var planSheet = ss.getSheetByName(CONFIG.SHEET_PLAN);
   if (planSheet) {
-    upgradeBelegungsplanSheet(ss, sep);
+    upgradeHallenSpielplanSheet(ss, sep);
   } else {
-    createBelegungsplanSheet(ss, sep);
+    createHallenSpielplanSheet(ss, sep);
   }
 
   createTrigger();
@@ -182,9 +182,9 @@ function createSheetsOnly() {
 
   var planSheet = ss.getSheetByName(CONFIG.SHEET_PLAN);
   if (planSheet) {
-    upgradeBelegungsplanSheet(ss, sep);
+    upgradeHallenSpielplanSheet(ss, sep);
   } else {
-    createBelegungsplanSheet(ss, sep);
+    createHallenSpielplanSheet(ss, sep);
   }
 
   createTrigger();
@@ -619,10 +619,10 @@ function createEingabeSheet(ss, sep) {
   );
 }
 
-// -------------------- Belegungsplan-Blatt --------------------
+// -------------------- Hallen/Spielplan-Blatt --------------------
 
-function createBelegungsplanSheet(ss, sep) {
-  initBelegungsplanSheet(ss.insertSheet(CONFIG.SHEET_PLAN, 3), sep);
+function createHallenSpielplanSheet(ss, sep) {
+  initHallenSpielplanSheet(ss.insertSheet(CONFIG.SHEET_PLAN, 3), sep);
 }
 
 /**
@@ -633,16 +633,16 @@ function createBelegungsplanSheet(ss, sep) {
  * Wird von setupSheet(), resetAll() und createSheetsOnly() aufgerufen,
  * wenn der Tab bereits existiert.
  */
-function upgradeBelegungsplanSheet(ss, sep) {
+function upgradeHallenSpielplanSheet(ss, sep) {
   var sheet = ss.getSheetByName(CONFIG.SHEET_PLAN);
   if (!sheet) {
-    createBelegungsplanSheet(ss, sep);
+    createHallenSpielplanSheet(ss, sep);
     return;
   }
-  initBelegungsplanSheet(sheet, sep);
+  initHallenSpielplanSheet(sheet, sep);
 }
 
-function initBelegungsplanSheet(sheet, sep) {
+function initHallenSpielplanSheet(sheet, sep) {
 
   // Checkbox 1 in A1: Nur Hallenbelegung
   sheet.getRange('A1').insertCheckboxes();

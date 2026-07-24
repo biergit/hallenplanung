@@ -1,6 +1,6 @@
-# Hallenbelegung Tischtennis
+# Hallen/Spielplanung Tischtennis
 
-Google Apps Script für die Hallenbelegungsplanung eines Tischtennisvereins.
+Google Apps Script für die Hallen/Spielplanung eines Tischtennisvereins.
 
 ## Enthaltene Blätter
 
@@ -9,7 +9,7 @@ Google Apps Script für die Hallenbelegungsplanung eines Tischtennisvereins.
 | Setup | Team-Konfiguration (Rang, Gruppe, Name/Kurzname per Formel) und Einstellungen |
 | Sperrungen/Anderweitige Belegungen | Gesperrte Tage, Bereiche und Zeiträume |
 | Eingabe | Dateneingabe durch Mannschaftsführer (mit Validierung) |
-| Belegungsplan | Öffentliche Kalenderansicht (für Web-Veröffentlichung) |
+| Hallen/Spielplan | Öffentliche Kalenderansicht (für Web-Veröffentlichung) |
 
 ## Funktionen
 
@@ -38,7 +38,7 @@ Google Apps Script für die Hallenbelegungsplanung eines Tischtennisvereins.
 ## Web-Veröffentlichung
 
 - **Datei → Für das Web veröffentlichen**
-- Blatt "Belegungsplan" auswählen
+- Blatt "Hallen/Spielplan" auswählen
 - Link teilen
 
 ## Freigabe an Mannschaftsführer

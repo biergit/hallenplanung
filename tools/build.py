@@ -20,8 +20,8 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 DATA_DIR = ROOT / "data"
-GS_FILE = ROOT / "hallenbelegung.gs"
-BUILD_FILE = ROOT / "build" / "hallenbelegung.gs"
+GS_FILE = ROOT / "hallenspielplan.gs"
+BUILD_FILE = ROOT / "build" / "hallenspielplan.gs"
 
 BEGIN_MARKER = "// --- SEED DATA BEGIN ---"
 END_MARKER = "// --- SEED DATA END ---"

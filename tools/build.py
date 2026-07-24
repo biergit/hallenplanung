@@ -21,6 +21,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 DATA_DIR = ROOT / "data"
 GS_FILE = ROOT / "hallenbelegung.gs"
+BUILD_FILE = ROOT / "build" / "hallenbelegung.gs"
 
 BEGIN_MARKER = "// --- SEED DATA BEGIN ---"
 END_MARKER = "// --- SEED DATA END ---"
@@ -56,6 +57,7 @@ def write_block(block: str) -> None:
     if BEGIN_MARKER not in content or END_MARKER not in content:
         print(f"Error: Marker {BEGIN_MARKER} / {END_MARKER} not found in {GS_FILE}")
         return
+    print(f"Source: {GS_FILE}")
 
     pattern = re.compile(
         re.escape(BEGIN_MARKER) + r"\n.*?\n" + re.escape(END_MARKER),
@@ -64,8 +66,9 @@ def write_block(block: str) -> None:
     replacement = BEGIN_MARKER + "\n" + block + "\n" + END_MARKER
     new_content = pattern.sub(replacement, content)
 
-    GS_FILE.write_text(new_content, encoding="utf-8")
-    print(f"Wrote {GS_FILE}")
+    BUILD_FILE.parent.mkdir(parents=True, exist_ok=True)
+    BUILD_FILE.write_text(new_content, encoding="utf-8")
+    print(f"Wrote {BUILD_FILE}")
 
 
 def main():

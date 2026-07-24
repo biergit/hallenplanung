@@ -705,11 +705,11 @@ function initHallenSpielplanSheet(sheet, sep) {
   sheet.setConditionalFormatRules(rules);
 
   sheet.setColumnWidth(1, 110);
-  sheet.setColumnWidth(2, 50);
-  sheet.setColumnWidth(3, 90);
-  sheet.setColumnWidth(4, 200);
-  sheet.setColumnWidth(5, 180);
-  sheet.setColumnWidth(6, 60);
+  sheet.setColumnWidth(2, 40);
+  sheet.setColumnWidth(3, 50);
+  sheet.setColumnWidth(4, 150);
+  sheet.setColumnWidth(5, 140);
+  sheet.setColumnWidth(6, 65);
   sheet.setColumnWidth(7, 200);
   sheet.setColumnWidth(8, 250);
   sheet.setColumnWidth(9, 300);

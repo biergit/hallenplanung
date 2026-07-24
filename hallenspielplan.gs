@@ -116,7 +116,6 @@ function setupSheet() {
 }
 
 function reorderSheets(ss, teamNames) {
-  var sheets = ss.getSheets();
   var ordered = [];
 
   for (var i = 0; i < teamNames.length; i++) {
@@ -131,7 +130,7 @@ function reorderSheets(ss, teamNames) {
   var setup = ss.getSheetByName(CONFIG.SHEET_SETUP);
   if (setup) ordered.push(setup);
 
-  for (var i = 0; i < ordered.length; i++) {
+  for (var i = ordered.length - 1; i >= 0; i--) {
     ss.setActiveSheet(ordered[i]);
     ss.moveActiveSheet(i + 1);
   }
@@ -170,6 +169,7 @@ function resetAll() {
   }
 
   createTrigger();
+  reorderSheets(ss, teamNames);
   seedSheets(ss);
   generatePlan();
 
@@ -215,6 +215,7 @@ function createSheetsOnly() {
   }
 
   createTrigger();
+  reorderSheets(ss, teamNames);
   generatePlan();
 
   var msg = 'Blätter neu angelegt (ohne Seed-Daten).';

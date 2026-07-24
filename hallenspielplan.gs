@@ -31,10 +31,10 @@ var CONFIG = {
   // Erlaubte Wochentage (JavaScript getDay: 0=So, 1=Mo, 2=Di, 3=Mi, 4=Do, 5=Fr, 6=Sa)
   ALLOWED_WEEKDAYS: [2, 3, 5, 6, 0],
 
-  // Mittwochs ist nur dieser Bereich buchbar
+  // Di + Mi: nur dieser Bereich buchbar
   WEDNESDAY_AREA: 'Kleine Halle',
 
-  // Dienstags und freitags maximal so viele Bereiche
+  // Fr: maximal so viele Bereiche; bei 2 muss Kleine Halle dabei sein
   MAX_AREAS_TUE_FRI: 2,
 
   // Vordefinierte Gruppen (kann in Spalte G des Teams-Blattes erweitert werden)
@@ -935,15 +935,17 @@ function validateAllEntries() {
       statusMessages[i].push('❌ Bereich fehlt');
     }
 
-    if (weekday === 3 && ha === 'Heim' && bereich && bereich !== CONFIG.WEDNESDAY_AREA) {
-      statusMessages[i].push('❌ Mittwochs nur "' + CONFIG.WEDNESDAY_AREA + '" buchbar');
+    if ((weekday === 2 || weekday === 3) && ha === 'Heim' && bereich && bereich !== CONFIG.WEDNESDAY_AREA) {
+      statusMessages[i].push('❌ ' + (weekday === 2 ? 'Dienstags' : 'Mittwochs') + ' nur "' + CONFIG.WEDNESDAY_AREA + '" buchbar');
     }
 
-    if ((weekday === 2 || weekday === 5) && ha === 'Heim' && bereich) {
+    if (weekday === 5 && ha === 'Heim' && bereich) {
       var areasOnDate = areaCountByDate[dateKey] || {};
-      if (Object.keys(areasOnDate).length > CONFIG.MAX_AREAS_TUE_FRI) {
-        statusMessages[i].push('❌ Di/Fr: max. ' + CONFIG.MAX_AREAS_TUE_FRI +
-          ' Bereiche buchbar (' + Object.keys(areasOnDate).length + ' wären belegt)');
+      var ac = Object.keys(areasOnDate).length;
+      if (ac > CONFIG.MAX_AREAS_TUE_FRI) {
+        statusMessages[i].push('❌ Fr: max. ' + CONFIG.MAX_AREAS_TUE_FRI + ' Bereiche buchbar');
+      } else if (ac === CONFIG.MAX_AREAS_TUE_FRI && !areasOnDate[CONFIG.WEDNESDAY_AREA]) {
+        statusMessages[i].push('❌ Fr: bei ' + CONFIG.MAX_AREAS_TUE_FRI + ' Heimspielen muss "' + CONFIG.WEDNESDAY_AREA + '" dabei sein');
       }
     }
 
@@ -1159,6 +1161,7 @@ function readTeamNames(ss) {
   for (var i = 0; i < data.length; i++) {
     if (data[i][0]) names.push(String(data[i][0]));
   }
+  names.sort(function(a, b) { return a.localeCompare(b); });
   return names;
 }
 

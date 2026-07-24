@@ -647,7 +647,7 @@ function initHallenSpielplanSheet(sheet, sep) {
 
   sheet.deleteRows(1, 2);
 
-  var headers = ['Datum', 'Tag', 'Startzeit', 'Bereich', 'Team', 'H/A', 'Gegner', 'Kommentar', 'Status'];
+  var headers = ['Datum', 'Tag', 'Startzeit', 'Bereich', 'Team', 'H/A', 'Gegner', 'Status', 'Kommentar'];
   sheet.getRange(1, 1, 1, 9)
     .setValues([headers])
     .setFontWeight('bold')
@@ -666,19 +666,19 @@ function initHallenSpielplanSheet(sheet, sep) {
     .build();
 
   var fehlerRule = SpreadsheetApp.newConditionalFormatRule()
-    .whenFormulaSatisfied('=REGEXMATCH($I2' + sep + ' "❌")')
+    .whenFormulaSatisfied('=REGEXMATCH($H2' + sep + ' "❌")')
     .setBackground('#FFCDD2')
     .setRanges([sheet.getRange('A2:I' + CONFIG.MAX_ROWS)])
     .build();
 
   var warnungRule = SpreadsheetApp.newConditionalFormatRule()
-    .whenFormulaSatisfied('=REGEXMATCH($I2' + sep + ' "⚠️")')
+    .whenFormulaSatisfied('=REGEXMATCH($H2' + sep + ' "⚠️")')
     .setBackground('#FFE0B2')
     .setRanges([sheet.getRange('A2:I' + CONFIG.MAX_ROWS)])
     .build();
 
   var sperrRule = SpreadsheetApp.newConditionalFormatRule()
-    .whenFormulaSatisfied('=REGEXMATCH($I2' + sep + ' "gesperrt")')
+    .whenFormulaSatisfied('=REGEXMATCH($H2' + sep + ' "gesperrt")')
     .setBackground('#E0E0E0')
     .setRanges([sheet.getRange('A2:I' + CONFIG.MAX_ROWS)])
     .build();
@@ -726,8 +726,8 @@ function generatePlan() {
         teamNames[t],
         row[4],
         row[0],
-        row[7] || '',
-        row[6] || ''
+        row[6] || '',
+        row[7] || ''
       ]);
     }
   }
@@ -759,8 +759,8 @@ function generatePlan() {
           '',
           '',
           zeitraum,
-          row[4] || '',
-          'gesperrt'
+          'gesperrt',
+          row[4] || ''
         ]);
       }
     }

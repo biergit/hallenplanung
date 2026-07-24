@@ -33,7 +33,7 @@ Im veröffentlichten Web-View sind keine Script-Trigger aktiv. Für interaktive 
 2. **Daten → Slicer** → je einen Slicer anlegen für:
    - **Team** (Spalte E)
    - **H/A** (Spalte F: Heim / Auswärts)
-   - **Typ** (Spalte I: `gesperrt` oder leer für Spieleinträge)
+   - **Typ** (Spalte H: `gesperrt` oder leer für Spieleinträge)
 3. Slicer funktionieren auch in der veröffentlichten HTML-Ansicht
 
 ## Installation

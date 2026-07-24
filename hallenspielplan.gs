@@ -43,7 +43,6 @@ var CONFIG = {
   // Blattnamen
   SHEET_SETUP: 'Setup',
   SHEET_SPERRUNGEN: 'Sperrungen/Anderweitige Belegungen',
-  SHEET_EINGABE: 'Eingabe',
   SHEET_PLAN: 'Hallen/Spielplan',
 
   // Standard-Spieldauer in Stunden (konfigurierbar in Setup!F1)
@@ -66,12 +65,20 @@ function setupSheet() {
   var isGerman = locale.startsWith('de');
   var sep = isGerman ? ';' : ',';
 
-  // Setup: nur anlegen, wenn nicht vorhanden
   if (!ss.getSheetByName(CONFIG.SHEET_SETUP)) {
     createSetupSheet(ss, sep);
   }
 
-  // Sperrungen: upgraden wenn vorhanden, sonst neu
+  var teamNames = readTeamNames(ss);
+  for (var i = 0; i < teamNames.length; i++) {
+    var ts = ss.getSheetByName(teamNames[i]);
+    if (ts) {
+      upgradeTeamSheet(ts, sep);
+    } else {
+      createTeamSheet(ss, teamNames[i], i, sep);
+    }
+  }
+
   var sperrSheet = ss.getSheetByName(CONFIG.SHEET_SPERRUNGEN);
   if (sperrSheet) {
     upgradeSperrungenSheet(ss);
@@ -79,16 +86,6 @@ function setupSheet() {
     createSperrungenSheet(ss);
   }
 
-  // Eingabe: upgraden wenn vorhanden, sonst neu
-  var eingabeSheet = ss.getSheetByName(CONFIG.SHEET_EINGABE);
-  if (eingabeSheet) {
-    upgradeEingabeSheet(ss);
-  } else {
-    createEingabeSheet(ss, sep);
-  }
-
-  // Plan: upgraden wenn vorhanden (GID erhalten für veröffentlichte Web-URL),
-  // sonst neu anlegen. Tab löschen = GID ändert sich = Link kaputt.
   var oldPlan = ss.getSheetByName('Belegungsplan');
   if (oldPlan) ss.deleteSheet(oldPlan);
   var planSheet = ss.getSheetByName(CONFIG.SHEET_PLAN);
@@ -97,23 +94,45 @@ function setupSheet() {
   } else {
     createHallenSpielplanSheet(ss, sep);
   }
-  generatePlan();
 
+  reorderSheets(ss, teamNames);
+
+  generatePlan();
   createTrigger();
 
   var msg = 'Setup abgeschlossen!\n\n' +
-    'Blätter:\n' +
-    '  1. ' + CONFIG.SHEET_SETUP + ' – Team-Konfiguration und Einstellungen\n' +
-    '  2. ' + CONFIG.SHEET_SPERRUNGEN + ' – Gesperrte Tage, Bereiche, Zeiträume\n' +
-    '  3. ' + CONFIG.SHEET_EINGABE + ' – Dateneingabe für Mannschaftsführer\n' +
-    '  4. ' + CONFIG.SHEET_PLAN + ' – Kalenderansicht\n\n' +
-    'Die Validierung läuft automatisch bei jeder Eingabe.\n\n' +
+    teamNames.length + ' Team-Blätter\n' +
+    '  ' + CONFIG.SHEET_SPERRUNGEN + '\n' +
+    '  ' + CONFIG.SHEET_PLAN + '\n' +
+    '  ' + CONFIG.SHEET_SETUP + '\n\n' +
     'Für die Web-Veröffentlichung:\n' +
     '  Datei → Für das Web veröffentlichen → ' + CONFIG.SHEET_PLAN;
   try {
     SpreadsheetApp.getUi().alert(msg);
   } catch (e) {
     Logger.log(msg);
+  }
+}
+
+function reorderSheets(ss, teamNames) {
+  var sheets = ss.getSheets();
+  var ordered = [];
+
+  for (var i = 0; i < teamNames.length; i++) {
+    var s = ss.getSheetByName(teamNames[i]);
+    if (s) ordered.push(s);
+  }
+
+  var sperr = ss.getSheetByName(CONFIG.SHEET_SPERRUNGEN);
+  if (sperr) ordered.push(sperr);
+  var plan = ss.getSheetByName(CONFIG.SHEET_PLAN);
+  if (plan) ordered.push(plan);
+  var setup = ss.getSheetByName(CONFIG.SHEET_SETUP);
+  if (setup) ordered.push(setup);
+
+  for (var i = 0; i < ordered.length; i++) {
+    ss.setActiveSheet(ordered[i]);
+    ss.moveActiveSheet(i + 1);
   }
 }
 
@@ -125,18 +144,22 @@ function resetAll() {
   var isGerman = locale.startsWith('de');
   var sep = isGerman ? ';' : ',';
 
-  // Datenblätter löschen (Plan erhalten wegen veröffentlichter Web-URL)
-  var sheetNames = [CONFIG.SHEET_SETUP, CONFIG.SHEET_SPERRUNGEN, CONFIG.SHEET_EINGABE];
-  sheetNames.forEach(function(name) {
-    var sheet = ss.getSheetByName(name);
-    if (sheet) ss.deleteSheet(sheet);
-  });
-  var oldPlan = ss.getSheetByName('Belegungsplan');
-  if (oldPlan) ss.deleteSheet(oldPlan);
+  // Alle Blätter ausser Plan löschen (Plan-GID für Web-URL erhalten)
+  var keep = [CONFIG.SHEET_PLAN];
+  var sheets = ss.getSheets();
+  for (var i = 0; i < sheets.length; i++) {
+    if (keep.indexOf(sheets[i].getName()) < 0) {
+      ss.deleteSheet(sheets[i]);
+    }
+  }
 
   createSetupSheet(ss, sep);
+  var teamNames = readTeamNames(ss);
+  for (var i = 0; i < teamNames.length; i++) {
+    createTeamSheet(ss, teamNames[i], i, sep);
+  }
+
   createSperrungenSheet(ss);
-  createEingabeSheet(ss, sep);
 
   var planSheet = ss.getSheetByName(CONFIG.SHEET_PLAN);
   if (planSheet) {
@@ -150,10 +173,10 @@ function resetAll() {
   generatePlan();
 
   var msg = 'Alles neu angelegt inkl. Seed-Daten.\n\n' +
-    '  1. ' + CONFIG.SHEET_SETUP + '\n' +
-    '  2. ' + CONFIG.SHEET_SPERRUNGEN + '\n' +
-    '  3. ' + CONFIG.SHEET_EINGABE + '\n' +
-    '  4. ' + CONFIG.SHEET_PLAN;
+    teamNames.length + ' Team-Blätter\n' +
+    '  ' + CONFIG.SHEET_SPERRUNGEN + '\n' +
+    '  ' + CONFIG.SHEET_PLAN + '\n' +
+    '  ' + CONFIG.SHEET_SETUP;
   try {
     SpreadsheetApp.getUi().alert(msg);
   } catch (e) {
@@ -167,18 +190,21 @@ function createSheetsOnly() {
   var isGerman = locale.startsWith('de');
   var sep = isGerman ? ';' : ',';
 
-  // Datenblätter löschen (Plan erhalten wegen veröffentlichter Web-URL)
-  var sheetNames = [CONFIG.SHEET_SETUP, CONFIG.SHEET_SPERRUNGEN, CONFIG.SHEET_EINGABE];
-  sheetNames.forEach(function(name) {
-    var sheet = ss.getSheetByName(name);
-    if (sheet) ss.deleteSheet(sheet);
-  });
-  var oldPlan = ss.getSheetByName('Belegungsplan');
-  if (oldPlan) ss.deleteSheet(oldPlan);
+  var keep = [CONFIG.SHEET_PLAN];
+  var sheets = ss.getSheets();
+  for (var i = 0; i < sheets.length; i++) {
+    if (keep.indexOf(sheets[i].getName()) < 0) {
+      ss.deleteSheet(sheets[i]);
+    }
+  }
 
   createSetupSheet(ss, sep);
+  var teamNames = readTeamNames(ss);
+  for (var i = 0; i < teamNames.length; i++) {
+    createTeamSheet(ss, teamNames[i], i, sep);
+  }
+
   createSperrungenSheet(ss);
-  createEingabeSheet(ss, sep);
 
   var planSheet = ss.getSheetByName(CONFIG.SHEET_PLAN);
   if (planSheet) {
@@ -236,33 +262,42 @@ function _seedSetup(ss) {
 }
 
 function _seedEingabe(ss) {
-  var sheet = ss.getSheetByName(CONFIG.SHEET_EINGABE);
-  if (!sheet) return;
-
-  var data = [];
+  var teamNames = readTeamNames(ss);
+  var byTeam = {};
   for (var i = 0; i < SEED_EINGABE.length; i++) {
     var row = SEED_EINGABE[i];
-    var datum = _parseDate(row[2]);
-    var startzeit = _parseTime(row[3]);
-    var endzeit = _parseTime(row[4]);
-    data.push([row[0], row[1], datum, startzeit, endzeit, row[5], row[6], row[7], '']);
+    var team = row[0];
+    if (teamNames.indexOf(team) < 0) continue;
+    if (!byTeam[team]) byTeam[team] = [];
+    byTeam[team].push(row);
   }
-  if (data.length > 0) {
-    var range = sheet.getRange(2, 1, data.length, 9);
-    range.clearDataValidations();
-    range.setValues(data);
-    // Validierungen wiederherstellen
-    var setupSheet = ss.getSheetByName(CONFIG.SHEET_SETUP);
-    if (setupSheet) {
-      sheet.getRange(2, 1, data.length, 1).setDataValidation(
-        SpreadsheetApp.newDataValidation().requireValueInRange(setupSheet.getRange('C2:C1000')).setAllowInvalid(false).build());
+
+  for (var t = 0; t < teamNames.length; t++) {
+    var team = teamNames[t];
+    var entries = byTeam[team] || [];
+    if (entries.length === 0) continue;
+    var sheet = ss.getSheetByName(team);
+    if (!sheet) continue;
+
+    var data = [];
+    for (var i = 0; i < entries.length; i++) {
+      var row = entries[i];
+      var datum = _parseDate(row[2]);
+      var startzeit = _parseTime(row[3]);
+      var endzeit = _parseTime(row[4]);
+      data.push([row[1], datum, startzeit, endzeit, row[5], row[6], row[7], '']);
     }
-    sheet.getRange(2, 3, data.length, 1).setDataValidation(
-      SpreadsheetApp.newDataValidation().requireDate().setAllowInvalid(true).setHelpText('Datum eingeben oder auswählen (Kalender)').build());
-    sheet.getRange(2, 6, data.length, 1).setDataValidation(
-      SpreadsheetApp.newDataValidation().requireValueInList(['Heim', 'Auswärts']).setAllowInvalid(false).build());
-    sheet.getRange(2, 7, data.length, 1).setDataValidation(
-      SpreadsheetApp.newDataValidation().requireValueInList(CONFIG.AREAS).setAllowInvalid(false).build());
+    if (data.length > 0) {
+      var range = sheet.getRange(2, 1, data.length, 8);
+      range.clearDataValidations();
+      range.setValues(data);
+      sheet.getRange(2, 2, data.length, 1).setDataValidation(
+        SpreadsheetApp.newDataValidation().requireDate().setAllowInvalid(true).setHelpText('Datum eingeben oder auswählen').build());
+      sheet.getRange(2, 5, data.length, 1).setDataValidation(
+        SpreadsheetApp.newDataValidation().requireValueInList(['Heim', 'Auswärts']).setAllowInvalid(false).build());
+      sheet.getRange(2, 6, data.length, 1).setDataValidation(
+        SpreadsheetApp.newDataValidation().requireValueInList(CONFIG.AREAS).setAllowInvalid(false).build());
+    }
   }
 }
 
@@ -507,118 +542,6 @@ function upgradeSperrungenSheet(ss) {
   protectRange(sheet, 'A1:F1');
 }
 
-function upgradeEingabeSheet(ss) {
-  var sheet = ss.getSheetByName(CONFIG.SHEET_EINGABE);
-  if (!sheet) return;
-
-  sheet.showColumns(10);
-  var lastRow = sheet.getLastRow();
-  if (lastRow >= 1) {
-    sheet.getRange(1, 10).clearContent();
-    if (lastRow >= 2) {
-      sheet.getRange(2, 10, lastRow - 1, 1).clearContent();
-    }
-  }
-}
-
-// -------------------- Eingabe-Blatt --------------------
-
-function createEingabeSheet(ss, sep) {
-  var sheet = ss.insertSheet(CONFIG.SHEET_EINGABE, 2);
-
-  // Spalten: A=Team, B=Gegner, C=Datum, D=Startzeit, E=späteste Endzeit, F=Heim/Auswärts, G=Bereich, H=Kommentar, I=Status
-  var headers = ['Team', 'Gegner', 'Datum', 'Startzeit', 'späteste Endzeit', 'Heim/Auswärts', 'Bereich', 'Kommentar', '\u26A0\uFE0F Status'];
-  sheet.getRange(1, 1, 1, 9)
-    .setValues([headers])
-    .setFontWeight('bold')
-    .setBackground('#E8E8E8');
-
-  sheet.getRange(2, 3, CONFIG.MAX_ROWS, 1).setNumberFormat('DD.MM.YYYY');
-  sheet.getRange(2, 4, CONFIG.MAX_ROWS, 1).setNumberFormat('HH:MM');
-  sheet.getRange(2, 5, CONFIG.MAX_ROWS, 1).setNumberFormat('HH:MM');
-
-  sheet.getRange(1, 5).setNote('Wird automatisch beim Eintragen der Startzeit berechnet (Startzeit + team-spezifische Spieldauer aus Setup).');
-
-  // Date picker
-  var dateRule = SpreadsheetApp.newDataValidation()
-    .requireDate()
-    .setAllowInvalid(true)
-    .setHelpText('Datum eingeben oder auswählen (Kalender)')
-    .build();
-  sheet.getRange(2, 3, CONFIG.MAX_ROWS, 1).setDataValidation(dateRule);
-
-  // Team-Dropdown aus Setup-Blatt
-  var setupSheet = ss.getSheetByName(CONFIG.SHEET_SETUP);
-  var teamRule = SpreadsheetApp.newDataValidation()
-.requireValueInRange(setupSheet.getRange('C2:C' + CONFIG.MAX_ROWS))
-    .setAllowInvalid(false)
-    .build();
-  sheet.getRange(2, 1, CONFIG.MAX_ROWS, 1).setDataValidation(teamRule);
-
-  // Heim/Auswärts
-  var haRule = SpreadsheetApp.newDataValidation()
-    .requireValueInList(['Heim', 'Auswärts'])
-    .setAllowInvalid(false)
-    .build();
-  sheet.getRange(2, 6, CONFIG.MAX_ROWS, 1).setDataValidation(haRule);
-
-  // Bereich
-  var areaRule = SpreadsheetApp.newDataValidation()
-    .requireValueInList(CONFIG.AREAS)
-    .setAllowInvalid(false)
-    .build();
-  sheet.getRange(2, 7, CONFIG.MAX_ROWS, 1).setDataValidation(areaRule);
-
-  // Bedingte Formatierungen
-  var heimRule = SpreadsheetApp.newConditionalFormatRule()
-    .whenFormulaSatisfied('=$F2="Heim"')
-    .setBackground('#C8E6C9')
-    .setRanges([sheet.getRange('A2:I' + CONFIG.MAX_ROWS)])
-    .build();
-
-  var auswaertsRule = SpreadsheetApp.newConditionalFormatRule()
-    .whenFormulaSatisfied('=$F2="Auswärts"')
-    .setBackground('#BBDEFB')
-    .setRanges([sheet.getRange('A2:I' + CONFIG.MAX_ROWS)])
-    .build();
-
-  var fehlerRule = SpreadsheetApp.newConditionalFormatRule()
-    .whenFormulaSatisfied('=REGEXMATCH($I2' + sep + ' "❌")')
-    .setBackground('#FFCDD2')
-    .setRanges([sheet.getRange('A2:I' + CONFIG.MAX_ROWS)])
-    .build();
-
-  var warnungRule = SpreadsheetApp.newConditionalFormatRule()
-    .whenFormulaSatisfied('=REGEXMATCH($I2' + sep + ' "⚠️")')
-    .setBackground('#FFE0B2')
-    .setRanges([sheet.getRange('A2:I' + CONFIG.MAX_ROWS)])
-    .build();
-
-  var rules = sheet.getConditionalFormatRules();
-  rules.push(heimRule, auswaertsRule, fehlerRule, warnungRule);
-  sheet.setConditionalFormatRules(rules);
-
-  protectRange(sheet, 'A1:I1');
-
-  sheet.setColumnWidth(1, 180);
-  sheet.setColumnWidth(2, 200);
-  sheet.setColumnWidth(3, 110);
-  sheet.setColumnWidth(4, 90);
-  sheet.setColumnWidth(5, 110);
-  sheet.setColumnWidth(6, 120);
-  sheet.setColumnWidth(7, 200);
-  sheet.setColumnWidth(8, 250);
-  sheet.setColumnWidth(9, 350);
-
-  sheet.setFrozenRows(1);
-
-  sheet.getRange(1, 9).setNote(
-    'Automatisch vom Script befüllt.\n' +
-    '❌ = Validierungsfehler\n' +
-    '⚠️ = Benachbartes Team spielt am selben Tag'
-  );
-}
-
 // -------------------- Team-Blätter --------------------
 
 function createTeamSheet(ss, teamName, index, sep) {
@@ -738,20 +661,6 @@ function upgradeHallenSpielplanSheet(ss, sep) {
 }
 
 function initHallenSpielplanSheet(sheet, sep) {
-
-  // Checkbox 1 in A1: Nur Hallenbelegung
-  sheet.getRange('A1').insertCheckboxes();
-  sheet.getRange('A1').setValue(false);
-  sheet.getRange('B1').setValue('Nur Hallenbelegung (Heimspiele)');
-  sheet.getRange('B1').setFontStyle('italic');
-  sheet.getRange('B1').setFontColor('#555555');
-
-  // Checkbox 2 in A2: Sperrungen anzeigen
-  sheet.getRange('A2').insertCheckboxes();
-  sheet.getRange('A2').setValue(false);
-  sheet.getRange('B2').setValue('Sperrungen/Anderweitige Belegungen anzeigen');
-  sheet.getRange('B2').setFontStyle('italic');
-  sheet.getRange('B2').setFontColor('#555555');
 
   // Überschriften Zeile 3
   var headers = ['Datum', 'Tag', 'Startzeit', 'Bereich', 'Team', 'H/A', 'Gegner', 'Kommentar', 'Status'];
@@ -919,8 +828,9 @@ function formatTime(t) {
 function handleEdit(e) {
   var sheet = e.range.getSheet();
   var name = sheet.getName();
+  var teamNames = readTeamNames(SpreadsheetApp.getActiveSpreadsheet());
 
-  if (name === CONFIG.SHEET_EINGABE || readTeamNames(SpreadsheetApp.getActiveSpreadsheet()).indexOf(name) >= 0) {
+  if (teamNames.indexOf(name) >= 0) {
     if (e.range.getRow() < 2) return;
     var col = e.range.getColumn();
 
@@ -944,10 +854,6 @@ function handleEdit(e) {
     validateSperrungen();
     validateAllEntries();
     generatePlan();
-  } else if (name === CONFIG.SHEET_PLAN) {
-    if (e.range.getRow() <= 2 && e.range.getColumn() === 1) {
-      generatePlan();
-    }
   }
 }
 
@@ -1402,18 +1308,20 @@ function downloadTSV() {
   // Eingabe
   result += '# data/eingabe.tsv\n';
   result += 'Team\tGegner\tDatum\tStartzeit\tspäteste Endzeit\tHeim/Auswärts\tBereich\tKommentar\n';
-  var eingabeSheet = ss.getSheetByName(CONFIG.SHEET_EINGABE);
-  if (eingabeSheet) {
-    var lastRow2 = Math.max(eingabeSheet.getLastRow(), 1);
+  var teamNames = readTeamNames(ss);
+  for (var t = 0; t < teamNames.length; t++) {
+    var sheet = ss.getSheetByName(teamNames[t]);
+    if (!sheet) continue;
+    var lastRow2 = Math.max(sheet.getLastRow(), 1);
     if (lastRow2 >= 2) {
-      var data2 = eingabeSheet.getRange(2, 1, lastRow2 - 1, 9).getValues();
+      var data2 = sheet.getRange(2, 1, lastRow2 - 1, 8).getValues();
       for (var j = 0; j < data2.length; j++) {
-        if (data2[j][2]) {
-          var d = data2[j][2];
+        if (data2[j][1]) {
+          var d = data2[j][1];
           var dateStr = d instanceof Date ? ('0' + d.getDate()).slice(-2) + '.' + ('0' + (d.getMonth() + 1)).slice(-2) + '.' + d.getFullYear() : d;
-          var st = _formatTime(data2[j][3]);
-          var et = _formatTime(data2[j][4]);
-          result += [data2[j][0], data2[j][1], dateStr, st, et, data2[j][5], data2[j][6], data2[j][7]].join('\t') + '\n';
+          var st = _formatTime(data2[j][2]);
+          var et = _formatTime(data2[j][3]);
+          result += [teamNames[t], data2[j][0], dateStr, st, et, data2[j][4], data2[j][5], data2[j][7] || ''].join('\t') + '\n';
         }
       }
     }

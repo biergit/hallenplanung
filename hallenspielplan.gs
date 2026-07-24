@@ -434,7 +434,7 @@ function createSetupSheet(ss, sep) {
     ['1.', 'Hallen/Spielplan-Tab öffnen.'],
     ['2.', 'Menü Daten → Slicer.'],
     ['3.', 'Slicer für Team (Spalte E) anlegen.'],
-    ['4.', 'Slicer für H/A (Spalte F) anlegen.'],
+    ['4.', 'Slicer für Heim/Auswärts (Spalte F) anlegen.'],
     ['5.', 'Slicer für Typ (Spalte I: leer=Spiel, »gesperrt«=Sperrung).'],
     ['', 'Slicer funktionieren in der veröffentlichten HTML-Ansicht.'],
     ['', ''],
@@ -647,7 +647,7 @@ function initHallenSpielplanSheet(sheet, sep) {
 
   sheet.deleteRows(1, 2);
 
-  var headers = ['Datum', 'Tag', 'Startzeit', 'Bereich', 'Team', 'H/A', 'Gegner', 'Status', 'Kommentar'];
+  var headers = ['Datum', 'Tag', 'Startzeit', 'Bereich', 'Team', 'Heim/Auswärts', 'Gegner', 'Status', 'Kommentar'];
   sheet.getRange(1, 1, 1, 9)
     .setValues([headers])
     .setFontWeight('bold')
@@ -920,7 +920,7 @@ function validateAllEntries() {
       continue;
     }
     if (ha !== 'Heim' && ha !== 'Auswärts') {
-      statusMessages[i].push('❌ H/A fehlt');
+      statusMessages[i].push('❌ Heim/Auswärts fehlt');
       continue;
     }
 

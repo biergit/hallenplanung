@@ -619,6 +619,101 @@ function createEingabeSheet(ss, sep) {
   );
 }
 
+// -------------------- Team-Blätter --------------------
+
+function createTeamSheet(ss, teamName, index, sep) {
+  var sheet = ss.insertSheet(teamName, index);
+
+  var headers = ['Gegner', 'Datum', 'Startzeit', 'späteste Endzeit', 'Heim/Auswärts', 'Bereich', '\u26A0\uFE0F Status', 'Kommentar'];
+  sheet.getRange(1, 1, 1, 8)
+    .setValues([headers])
+    .setFontWeight('bold')
+    .setBackground('#E8E8E8');
+
+  sheet.getRange(2, 2, CONFIG.MAX_ROWS, 1).setNumberFormat('DD.MM.YYYY');
+  sheet.getRange(2, 3, CONFIG.MAX_ROWS, 1).setNumberFormat('HH:MM');
+  sheet.getRange(2, 4, CONFIG.MAX_ROWS, 1).setNumberFormat('HH:MM');
+
+  sheet.getRange(1, 4).setNote('Wird automatisch beim Eintragen der Startzeit berechnet.');
+
+  var dateRule = SpreadsheetApp.newDataValidation()
+    .requireDate()
+    .setAllowInvalid(true)
+    .setHelpText('Datum eingeben oder auswählen')
+    .build();
+  sheet.getRange(2, 2, CONFIG.MAX_ROWS, 1).setDataValidation(dateRule);
+
+  var haRule = SpreadsheetApp.newDataValidation()
+    .requireValueInList(['Heim', 'Auswärts'])
+    .setAllowInvalid(false)
+    .build();
+  sheet.getRange(2, 5, CONFIG.MAX_ROWS, 1).setDataValidation(haRule);
+
+  var areaRule = SpreadsheetApp.newDataValidation()
+    .requireValueInList(CONFIG.AREAS)
+    .setAllowInvalid(false)
+    .build();
+  sheet.getRange(2, 6, CONFIG.MAX_ROWS, 1).setDataValidation(areaRule);
+
+  sheet.hideColumns(4, 1);
+
+  var heimRule = SpreadsheetApp.newConditionalFormatRule()
+    .whenFormulaSatisfied('=$E2="Heim"')
+    .setBackground('#C8E6C9')
+    .setRanges([sheet.getRange('A2:H' + CONFIG.MAX_ROWS)])
+    .build();
+
+  var auswaertsRule = SpreadsheetApp.newConditionalFormatRule()
+    .whenFormulaSatisfied('=$E2="Auswärts"')
+    .setBackground('#BBDEFB')
+    .setRanges([sheet.getRange('A2:H' + CONFIG.MAX_ROWS)])
+    .build();
+
+  var fehlerRule = SpreadsheetApp.newConditionalFormatRule()
+    .whenFormulaSatisfied('=REGEXMATCH($G2' + sep + ' "❌")')
+    .setBackground('#FFCDD2')
+    .setRanges([sheet.getRange('A2:H' + CONFIG.MAX_ROWS)])
+    .build();
+
+  var warnungRule = SpreadsheetApp.newConditionalFormatRule()
+    .whenFormulaSatisfied('=REGEXMATCH($G2' + sep + ' "⚠️")')
+    .setBackground('#FFE0B2')
+    .setRanges([sheet.getRange('A2:H' + CONFIG.MAX_ROWS)])
+    .build();
+
+  var rules = sheet.getConditionalFormatRules();
+  rules.push(heimRule, auswaertsRule, fehlerRule, warnungRule);
+  sheet.setConditionalFormatRules(rules);
+
+  protectRange(sheet, 'A1:H1');
+
+  sheet.setColumnWidth(1, 200);
+  sheet.setColumnWidth(2, 110);
+  sheet.setColumnWidth(3, 90);
+  sheet.setColumnWidth(5, 120);
+  sheet.setColumnWidth(6, 200);
+  sheet.setColumnWidth(7, 350);
+  sheet.setColumnWidth(8, 250);
+
+  sheet.setFrozenRows(1);
+}
+
+function upgradeTeamSheet(sheet, sep) {
+  sheet.showColumns(4);
+  sheet.getRange(1, 4).setValue('späteste Endzeit').setFontWeight('bold').setBackground('#E8E8E8');
+  sheet.hideColumns(4, 1);
+
+  if (sheet.getRange('G1').getValue() !== '\u26A0\uFE0F Status') {
+    sheet.getRange(1, 1, 1, 8).clearContent();
+    sheet.getRange(1, 1, 1, 8)
+      .setValues([['Gegner', 'Datum', 'Startzeit', 'späteste Endzeit', 'Heim/Auswärts', 'Bereich', '\u26A0\uFE0F Status', 'Kommentar']])
+      .setFontWeight('bold')
+      .setBackground('#E8E8E8');
+  }
+
+  protectRange(sheet, 'A1:H1');
+}
+
 // -------------------- Hallen/Spielplan-Blatt --------------------
 
 function createHallenSpielplanSheet(ss, sep) {
@@ -1146,6 +1241,19 @@ function checkAdjacentTeams(data, teams) {
 }
 
 // -------------------- Daten lesen --------------------
+
+function readTeamNames(ss) {
+  var setupSheet = ss.getSheetByName(CONFIG.SHEET_SETUP);
+  if (!setupSheet) return [];
+  var lastRow = setupSheet.getLastRow();
+  if (lastRow < 2) return [];
+  var data = setupSheet.getRange(2, 3, lastRow - 1, 1).getValues();
+  var names = [];
+  for (var i = 0; i < data.length; i++) {
+    if (data[i][0]) names.push(String(data[i][0]));
+  }
+  return names;
+}
 
 function readTeams(ss) {
   var sheet = ss.getSheetByName(CONFIG.SHEET_SETUP);

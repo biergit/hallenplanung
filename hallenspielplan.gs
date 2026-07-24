@@ -69,13 +69,14 @@ function setupSheet() {
     createSetupSheet(ss, sep);
   }
 
+  SpreadsheetApp.flush();
   var teamNames = readTeamNames(ss);
   for (var i = 0; i < teamNames.length; i++) {
     var ts = ss.getSheetByName(teamNames[i]);
     if (ts) {
       upgradeTeamSheet(ts, sep);
     } else {
-      createTeamSheet(ss, teamNames[i], i, sep);
+      createTeamSheet(ss, teamNames[i], sep);
     }
   }
 
@@ -156,7 +157,7 @@ function resetAll() {
   createSetupSheet(ss, sep);
   var teamNames = readTeamNames(ss);
   for (var i = 0; i < teamNames.length; i++) {
-    createTeamSheet(ss, teamNames[i], i, sep);
+    createTeamSheet(ss, teamNames[i], sep);
   }
 
   createSperrungenSheet(ss);
@@ -201,7 +202,7 @@ function createSheetsOnly() {
   createSetupSheet(ss, sep);
   var teamNames = readTeamNames(ss);
   for (var i = 0; i < teamNames.length; i++) {
-    createTeamSheet(ss, teamNames[i], i, sep);
+    createTeamSheet(ss, teamNames[i], sep);
   }
 
   createSperrungenSheet(ss);
@@ -352,7 +353,7 @@ function _parseTime(str) {
 // -------------------- Setup-Blatt --------------------
 
 function createSetupSheet(ss, sep) {
-  var sheet = ss.insertSheet(CONFIG.SHEET_SETUP, 0);
+  var sheet = ss.insertSheet(CONFIG.SHEET_SETUP);
 
   var headers = ['Rang', 'Gruppe', 'Teamname', 'Kurzname'];
   sheet.getRange(1, 1, 1, 4)
@@ -481,7 +482,7 @@ function createSetupSheet(ss, sep) {
 // -------------------- Sperrungen-Blatt --------------------
 
 function createSperrungenSheet(ss) {
-  var sheet = ss.insertSheet(CONFIG.SHEET_SPERRUNGEN, 1);
+  var sheet = ss.insertSheet(CONFIG.SHEET_SPERRUNGEN);
 
   var headers = ['Datum', 'Startzeit', 'Endzeit', 'Bereich', 'Kommentar', '\u26A0\uFE0F Status'];
   sheet.getRange(1, 1, 1, 6)
@@ -544,8 +545,8 @@ function upgradeSperrungenSheet(ss) {
 
 // -------------------- Team-Blätter --------------------
 
-function createTeamSheet(ss, teamName, index, sep) {
-  var sheet = ss.insertSheet(teamName, index);
+function createTeamSheet(ss, teamName, sep) {
+  var sheet = ss.insertSheet(teamName);
 
   var headers = ['Gegner', 'Datum', 'Startzeit', 'späteste Endzeit', 'Heim/Auswärts', 'Bereich', '\u26A0\uFE0F Status', 'Kommentar'];
   sheet.getRange(1, 1, 1, 8)
@@ -640,7 +641,7 @@ function upgradeTeamSheet(sheet, sep) {
 // -------------------- Hallen/Spielplan-Blatt --------------------
 
 function createHallenSpielplanSheet(ss, sep) {
-  initHallenSpielplanSheet(ss.insertSheet(CONFIG.SHEET_PLAN, 3), sep);
+  initHallenSpielplanSheet(ss.insertSheet(CONFIG.SHEET_PLAN), sep);
 }
 
 /**
@@ -661,6 +662,9 @@ function upgradeHallenSpielplanSheet(ss, sep) {
 }
 
 function initHallenSpielplanSheet(sheet, sep) {
+
+  sheet.getRange('A1:B2').clearContent();
+  sheet.getRange('A1:A2').removeCheckboxes();
 
   // Überschriften Zeile 3
   var headers = ['Datum', 'Tag', 'Startzeit', 'Bereich', 'Team', 'H/A', 'Gegner', 'Kommentar', 'Status'];

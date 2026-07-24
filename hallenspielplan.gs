@@ -814,67 +814,62 @@ function generatePlan() {
   var planSheet = ss.getSheetByName(CONFIG.SHEET_PLAN);
   if (!planSheet) return;
 
-  var nurHeim = planSheet.getRange('A1').isChecked();
-  var sperrungenAnzeigen = planSheet.getRange('A2').isChecked();
-
   var rows = [];
+  var teamNames = readTeamNames(ss);
 
-  var eingabeSheet = ss.getSheetByName(CONFIG.SHEET_EINGABE);
-  if (eingabeSheet) {
-    var lastRow = eingabeSheet.getLastRow();
-    if (lastRow >= 2) {
-      var data = eingabeSheet.getRange(2, 1, lastRow - 1, 9).getValues();
-      for (var i = 0; i < data.length; i++) {
-        var row = data[i];
-        if (!isValidDate(row[2])) continue;
-        if (nurHeim && row[5] !== 'Heim') continue;
-        rows.push([
-          row[2],
-          weekdayName(row[2].getDay()),
-          row[3],
-          row[6] || '',
-          row[0],
-          row[5],
-          row[1],
-          row[7] || '',
-          row[8] || ''
-        ]);
-      }
+  for (var t = 0; t < teamNames.length; t++) {
+    var teamSheet = ss.getSheetByName(teamNames[t]);
+    if (!teamSheet) continue;
+    var lastRow = teamSheet.getLastRow();
+    if (lastRow < 2) continue;
+    var data = teamSheet.getRange(2, 1, lastRow - 1, 8).getValues();
+    for (var i = 0; i < data.length; i++) {
+      var row = data[i];
+      if (!isValidDate(row[1])) continue;
+      rows.push([
+        row[1],
+        weekdayName(row[1].getDay()),
+        row[2],
+        row[5] || '',
+        teamNames[t],
+        row[4],
+        row[0],
+        row[7] || '',
+        row[6] || ''
+      ]);
     }
   }
 
-  if (sperrungenAnzeigen) {
-    var sperrSheet = ss.getSheetByName(CONFIG.SHEET_SPERRUNGEN);
-    if (sperrSheet) {
-      var lastRow = sperrSheet.getLastRow();
-      if (lastRow >= 2) {
-        var data = sperrSheet.getRange(2, 1, lastRow - 1, 5).getValues();
-        for (var i = 0; i < data.length; i++) {
-          var row = data[i];
-          if (!isValidDate(row[0])) continue;
-          if (isValidTime(row[2]) && !isValidTime(row[1])) continue;
-          var zeitraum = '';
-          if (!isValidTime(row[1]) && !isValidTime(row[2])) {
-            zeitraum = 'ganztägig';
-          } else if (isValidTime(row[1]) && isValidTime(row[2])) {
-            zeitraum = formatTime(row[1]) + ' - ' + formatTime(row[2]);
-          } else if (isValidTime(row[1])) {
-            zeitraum = 'ab ' + formatTime(row[1]);
-          } else {
-            zeitraum = 'bis ' + formatTime(row[2]);
-          }
-          rows.push([
-            row[0],
-            weekdayName(row[0].getDay()),
-            row[1],
-            row[3] || '',
-            '',
-            '',
-            zeitraum,
-            row[4] || '',
-            'gesperrt'
-          ]);
+  var sperrSheet = ss.getSheetByName(CONFIG.SHEET_SPERRUNGEN);
+  if (sperrSheet) {
+    var lastRow = sperrSheet.getLastRow();
+    if (lastRow >= 2) {
+      var data = sperrSheet.getRange(2, 1, lastRow - 1, 5).getValues();
+      for (var i = 0; i < data.length; i++) {
+        var row = data[i];
+        if (!isValidDate(row[0])) continue;
+        if (isValidTime(row[2]) && !isValidTime(row[1])) continue;
+        var zeitraum = '';
+        if (!isValidTime(row[1]) && !isValidTime(row[2])) {
+          zeitraum = 'ganztägig';
+        } else if (isValidTime(row[1]) && isValidTime(row[2])) {
+          zeitraum = formatTime(row[1]) + ' - ' + formatTime(row[2]);
+        } else if (isValidTime(row[1])) {
+          zeitraum = 'ab ' + formatTime(row[1]);
+        } else {
+          zeitraum = 'bis ' + formatTime(row[2]);
         }
+        rows.push([
+          row[0],
+          weekdayName(row[0].getDay()),
+          row[1],
+          row[3] || '',
+          '',
+          '',
+          zeitraum,
+          row[4] || '',
+          'gesperrt'
+        ]);
       }
     }
   }
@@ -898,7 +893,7 @@ function generatePlan() {
     planSheet.getRange(4, 1, rows.length, 1).setNumberFormat('DD.MM.YYYY');
     planSheet.getRange(4, 3, rows.length, 1).setNumberFormat('HH:MM');
   } else {
-    planSheet.getRange(4, 5).setValue('Keine Einträge für die aktuelle Filterauswahl.');
+    planSheet.getRange(4, 5).setValue('Keine Einträge vorhanden.');
   }
 }
 
@@ -925,12 +920,11 @@ function handleEdit(e) {
   var sheet = e.range.getSheet();
   var name = sheet.getName();
 
-  if (name === CONFIG.SHEET_EINGABE) {
+  if (name === CONFIG.SHEET_EINGABE || readTeamNames(SpreadsheetApp.getActiveSpreadsheet()).indexOf(name) >= 0) {
     if (e.range.getRow() < 2) return;
     var col = e.range.getColumn();
 
-  // Spalte D (Startzeit): "12" → 12:00 konvertieren + Endzeit berechnen
-  if (col === 4) {
+  if (col === 3) {
     var rawVal = e.range.getValue();
     if (typeof rawVal === 'number' && rawVal >= 1 && rawVal < 24) {
       var h = Math.floor(rawVal);
@@ -941,8 +935,8 @@ function handleEdit(e) {
     computeEndzeit(e.range);
   }
 
-    var relevantCols = [3, 4, 5, 1, 6, 7];
-    if (relevantCols.indexOf(col) === -1 && col !== 2 && col !== 8) return;
+    var relevantCols = [1, 2, 3, 4, 5, 6, 8];
+    if (relevantCols.indexOf(col) === -1) return;
     validateAllEntries();
     generatePlan();
   } else if (name === CONFIG.SHEET_SPERRUNGEN) {
@@ -961,33 +955,45 @@ function computeEndzeit(startCell) {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
   var sheet = startCell.getSheet();
   var row = startCell.getRow();
-  var team = sheet.getRange(row, 1).getValue();
+  var teamName = sheet.getName();
   var teams = readTeams(ss);
   var spieldauer = CONFIG.GAME_DURATION_HOURS;
-  if (teams[team] && typeof teams[team].spieldauer === 'number' && teams[team].spieldauer > 0) {
-    spieldauer = teams[team].spieldauer;
+  if (teams[teamName] && typeof teams[teamName].spieldauer === 'number' && teams[teamName].spieldauer > 0) {
+    spieldauer = teams[teamName].spieldauer;
   }
   var startVal = startCell.getValue();
   var frac = timeToFraction(startVal);
   if (frac !== null) {
-    sheet.getRange(row, 5).setValue(frac + spieldauer / 24).setNumberFormat('HH:MM');
+    sheet.getRange(row, 4).setValue(frac + spieldauer / 24).setNumberFormat('HH:MM');
   } else {
-    sheet.getRange(row, 5).clearContent();
+    sheet.getRange(row, 4).clearContent();
   }
 }
 
 function validateAllEntries() {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
-  var sheet = ss.getSheetByName(CONFIG.SHEET_EINGABE);
-  if (!sheet) return;
-
-  var lastRow = sheet.getLastRow();
-  if (lastRow < 2) return;
-
-  var data = sheet.getRange(2, 1, lastRow - 1, 9).getValues();
-
-  var teams = readTeams(ss);
+  var teamNames = readTeamNames(ss);
   var sperrungen = readSperrungen(ss);
+  var teams = readTeams(ss);
+
+  var data = [];
+  var entrySheets = [];
+  for (var t = 0; t < teamNames.length; t++) {
+    var sheet = ss.getSheetByName(teamNames[t]);
+    if (!sheet) continue;
+    var lastRow = sheet.getLastRow();
+    if (lastRow < 2) continue;
+    var teamData = sheet.getRange(2, 1, lastRow - 1, 8).getValues();
+    for (var i = 0; i < teamData.length; i++) {
+      var r = teamData[i];
+      data.push([
+        teamNames[t], r[0], r[1], r[2], r[3], r[4], r[5], r[7], r[6]
+      ]);
+      entrySheets.push({ sheet: sheet, rowIndex: i });
+    }
+  }
+
+  if (data.length === 0) return;
 
   var statusMessages = {};
   for (var i = 0; i < data.length; i++) {
@@ -1032,17 +1038,14 @@ function validateAllEntries() {
     var weekday = datum.getDay();
     var dateKey = datumToKey(datum);
 
-    // 1a. Wochentag (nur Heimspiele)
     if (ha === 'Heim' && CONFIG.ALLOWED_WEEKDAYS.indexOf(weekday) === -1) {
       statusMessages[i].push('❌ Nur Di, Mi, Fr, Sa, So erlaubt');
     }
 
-    // 1a2. Bereich Pflicht für Heimspiele
     if (ha === 'Heim' && !bereich) {
       statusMessages[i].push('❌ Bereich fehlt');
     }
 
-    // 1b. Mittwoch: nur Kleine Halle
     if (weekday === 3 && ha === 'Heim' && bereich && bereich !== CONFIG.WEDNESDAY_AREA) {
       statusMessages[i].push('❌ Mittwochs nur "' + CONFIG.WEDNESDAY_AREA + '" buchbar');
     }
@@ -1085,7 +1088,6 @@ function validateAllEntries() {
       }
     }
 
-    // 1e. Sperrungen prüfen
     if (ha === 'Heim' && bereich) {
       for (var s = 0; s < sperrungen.length; s++) {
         var sDatum = sperrungen[s].datum;
@@ -1108,7 +1110,6 @@ function validateAllEntries() {
             }
           }
         } else if (isValidTime(sStart)) {
-          // Sperrung ab sStart bis Tagesende
           if (isValidTime(startzeit) && isValidTime(endzeit)) {
             var bs = timeToFraction(startzeit), be = timeToFraction(endzeit);
             var ss = timeToFraction(sStart), se = 1;
@@ -1153,16 +1154,33 @@ function validateAllEntries() {
 
   var adjacentMessages = checkAdjacentTeams(data, teams);
 
-  var statusValues = [];
+  var perSheet = {};
   for (var i = 0; i < data.length; i++) {
+    var es = entrySheets[i];
+    var name = es.sheet.getName();
+    if (!perSheet[name]) perSheet[name] = {};
     var allMessages = statusMessages[i].slice();
     if (adjacentMessages[i]) {
       allMessages = allMessages.concat(adjacentMessages[i]);
     }
-    statusValues.push([allMessages.join(' | ')]);
+    perSheet[name][es.rowIndex] = allMessages.join(' | ');
   }
-  if (statusValues.length > 0) {
-    sheet.getRange(2, 9, statusValues.length, 1).setValues(statusValues);
+
+  for (var key in perSheet) {
+    var s = ss.getSheetByName(key);
+    if (!s) continue;
+    var rows = perSheet[key];
+    var max = 0;
+    for (var ri in rows) {
+      max = Math.max(max, parseInt(ri) + 1);
+    }
+    var vals = [];
+    for (var vi = 0; vi < max; vi++) {
+      vals.push([rows[vi] || '']);
+    }
+    if (vals.length > 0) {
+      s.getRange(2, 7, vals.length, 1).setValues(vals);
+    }
   }
 }
 

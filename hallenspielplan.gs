@@ -493,11 +493,11 @@ function createSperrungenSheet(ss) {
 
   protectRange(sheet, 'A1:F1');
 
-  sheet.setColumnWidth(1, 120);
-  sheet.setColumnWidth(2, 100);
-  sheet.setColumnWidth(3, 100);
-  sheet.setColumnWidth(4, 200);
-  sheet.setColumnWidth(5, 350);
+  sheet.setColumnWidth(1, 110);
+  sheet.setColumnWidth(2, 50);
+  sheet.setColumnWidth(3, 50);
+  sheet.setColumnWidth(4, 150);
+  sheet.setColumnWidth(5, 300);
 
   sheet.setFrozenRows(1);
 
@@ -522,6 +522,11 @@ function upgradeSperrungenSheet(ss) {
     }
   }
   sheet.getRange(1, 6).setValue('\u26A0\uFE0F Status').setFontWeight('bold').setBackground('#E8E8E8');
+  sheet.setColumnWidth(1, 110);
+  sheet.setColumnWidth(2, 50);
+  sheet.setColumnWidth(3, 50);
+  sheet.setColumnWidth(4, 150);
+  sheet.setColumnWidth(5, 300);
   protectRange(sheet, 'A1:F1');
 }
 
@@ -530,11 +535,12 @@ function upgradeSperrungenSheet(ss) {
 function createTeamSheet(ss, teamName, sep) {
   var sheet = ss.insertSheet(teamName);
 
-  var headers = ['Gegner', 'Datum', 'Startzeit', 'späteste Endzeit', 'Heim/Auswärts', 'Bereich', '\u26A0\uFE0F Status', 'Kommentar'];
+  var headers = ['Gegner', 'Datum', 'Startzeit', 'späteste Endzeit', 'Heim/\nAuswärts', 'Bereich', '\u26A0\uFE0F Status', 'Kommentar'];
   sheet.getRange(1, 1, 1, 8)
     .setValues([headers])
     .setFontWeight('bold')
-    .setBackground('#E8E8E8');
+    .setBackground('#E8E8E8')
+    .setWrap(true);
 
   sheet.getRange(2, 2, CONFIG.MAX_ROWS, 1).setNumberFormat('DD.MM.YYYY');
   sheet.getRange(2, 3, CONFIG.MAX_ROWS, 1).setNumberFormat('HH:MM');
@@ -595,11 +601,11 @@ function createTeamSheet(ss, teamName, sep) {
 
   sheet.setColumnWidth(1, 200);
   sheet.setColumnWidth(2, 110);
-  sheet.setColumnWidth(3, 90);
-  sheet.setColumnWidth(5, 120);
-  sheet.setColumnWidth(6, 200);
-  sheet.setColumnWidth(7, 350);
-  sheet.setColumnWidth(8, 250);
+  sheet.setColumnWidth(3, 50);
+  sheet.setColumnWidth(5, 65);
+  sheet.setColumnWidth(6, 150);
+  sheet.setColumnWidth(7, 250);
+  sheet.setColumnWidth(8, 300);
 
   sheet.setFrozenRows(1);
 }
@@ -612,10 +618,19 @@ function upgradeTeamSheet(sheet, sep) {
   if (sheet.getRange('G1').getValue() !== '\u26A0\uFE0F Status') {
     sheet.getRange(1, 1, 1, 8).clearContent();
     sheet.getRange(1, 1, 1, 8)
-      .setValues([['Gegner', 'Datum', 'Startzeit', 'späteste Endzeit', 'Heim/Auswärts', 'Bereich', '\u26A0\uFE0F Status', 'Kommentar']])
+      .setValues([['Gegner', 'Datum', 'Startzeit', 'späteste Endzeit', 'Heim/\nAuswärts', 'Bereich', '\u26A0\uFE0F Status', 'Kommentar']])
       .setFontWeight('bold')
-      .setBackground('#E8E8E8');
+      .setBackground('#E8E8E8')
+      .setWrap(true);
   }
+
+  sheet.setColumnWidth(1, 200);
+  sheet.setColumnWidth(2, 110);
+  sheet.setColumnWidth(3, 50);
+  sheet.setColumnWidth(5, 65);
+  sheet.setColumnWidth(6, 150);
+  sheet.setColumnWidth(7, 250);
+  sheet.setColumnWidth(8, 300);
 
   protectRange(sheet, 'A1:H1');
 }
@@ -647,11 +662,12 @@ function initHallenSpielplanSheet(sheet, sep) {
 
   sheet.deleteRows(1, 2);
 
-  var headers = ['Datum', 'Tag', 'Startzeit', 'Bereich', 'Team', 'Heim/Auswärts', 'Gegner', 'Status', 'Kommentar'];
+  var headers = ['Datum', 'Tag', 'Startzeit', 'Bereich', 'Team', 'Heim/\nAuswärts', 'Gegner', 'Status', 'Kommentar'];
   sheet.getRange(1, 1, 1, 9)
     .setValues([headers])
     .setFontWeight('bold')
-    .setBackground('#E8E8E8');
+    .setBackground('#E8E8E8')
+    .setWrap(true);
 
   var heimRule = SpreadsheetApp.newConditionalFormatRule()
     .whenFormulaSatisfied('=$F2="Heim"')
@@ -689,9 +705,9 @@ function initHallenSpielplanSheet(sheet, sep) {
 
   sheet.setColumnWidth(1, 110);
   sheet.setColumnWidth(2, 40);
-  sheet.setColumnWidth(3, 50);
-  sheet.setColumnWidth(4, 150);
-  sheet.setColumnWidth(5, 140);
+  sheet.setColumnWidth(3, 60);
+  sheet.setColumnWidth(4, 135);
+  sheet.setColumnWidth(5, 130);
   sheet.setColumnWidth(6, 65);
   sheet.setColumnWidth(7, 200);
   sheet.setColumnWidth(8, 250);
@@ -806,6 +822,20 @@ function formatTime(t) {
   return '';
 }
 
+function repairValidations(sheet) {
+  var dateRule = SpreadsheetApp.newDataValidation()
+    .requireDate().setAllowInvalid(true)
+    .setHelpText('Datum eingeben oder auswählen').build();
+  var haRule = SpreadsheetApp.newDataValidation()
+    .requireValueInList(['Heim', 'Auswärts']).setAllowInvalid(false).build();
+  var areaRule = SpreadsheetApp.newDataValidation()
+    .requireValueInList(CONFIG.AREAS).setAllowInvalid(false).build();
+  var lastRow = Math.max(sheet.getLastRow(), 2);
+  sheet.getRange(2, 2, lastRow - 1, 1).setDataValidation(dateRule);
+  sheet.getRange(2, 5, lastRow - 1, 1).setDataValidation(haRule);
+  sheet.getRange(2, 6, lastRow - 1, 1).setDataValidation(areaRule);
+}
+
 // ==================== VALIDIERUNG ====================
 
 function handleEdit(e) {
@@ -832,6 +862,7 @@ function handleEdit(e) {
     if (relevantCols.indexOf(col) === -1) return;
     validateAllEntries();
     generatePlan();
+    repairValidations(sheet);
   } else if (name === CONFIG.SHEET_SPERRUNGEN) {
     if (e.range.getRow() < 2) return;
     validateSperrungen();

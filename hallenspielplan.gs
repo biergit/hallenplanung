@@ -144,7 +144,6 @@ function resetAll() {
   var isGerman = locale.startsWith('de');
   var sep = isGerman ? ';' : ',';
 
-  // Alle Blätter ausser Plan löschen (Plan-GID für Web-URL erhalten)
   var keep = [CONFIG.SHEET_PLAN];
   var sheets = ss.getSheets();
   for (var i = 0; i < sheets.length; i++) {
@@ -154,12 +153,16 @@ function resetAll() {
   }
 
   createSetupSheet(ss, sep);
+  _seedSetup(ss);
+  SpreadsheetApp.flush();
+
   var teamNames = readTeamNames(ss);
   for (var i = 0; i < teamNames.length; i++) {
     createTeamSheet(ss, teamNames[i], sep);
   }
 
   createSperrungenSheet(ss);
+  _seedSperrungen(ss);
 
   var planSheet = ss.getSheetByName(CONFIG.SHEET_PLAN);
   if (planSheet) {
@@ -168,9 +171,11 @@ function resetAll() {
     createHallenSpielplanSheet(ss, sep);
   }
 
-  createTrigger();
   reorderSheets(ss, teamNames);
-  seedSheets(ss);
+  createTrigger();
+  _seedEingabe(ss);
+  validateSperrungen();
+  validateAllEntries();
   generatePlan();
 
   var msg = 'Alles neu angelegt inkl. Seed-Daten.\n\n' +
@@ -424,44 +429,20 @@ function createSetupSheet(ss, sep) {
 
   sheet.hideColumns(7);
 
-  // Bedienungsanleitung in Spalten J-L
-  sheet.getRange('J1').setValue('📋 BEDIENUNGSANLEITUNG');
-  sheet.getRange('J1').setFontWeight('bold');
-  sheet.getRange('J1').setFontSize(12);
-  sheet.setColumnWidth(10, 500);
-
   var instructions = [
-    ['SPIELDAUER:', 'Standard in F1 (z.B. 2.5 für 2h 30min).'],
-    ['', 'Pro Team in Spalte H überschreibbar.'],
-    ['', 'Gilt nur für neue Einträge – bestehende Endzeiten bleiben unverändert.'],
-    ['', ''],
-    ['STARTZEIT EINGEBEN:', 'Einfach "12" statt "12:00" eingeben – das Script wandelt es um.'],
-    ['', '"12.5" = 12:30, "14.25" = 14:15, usw.'],
-    ['', ''],
-    ['TEAMS:', 'Rang und Gruppe in Spalten A+B eintragen.'],
-    ['', 'Teamname und Kurzname werden automatisch generiert.'],
-    ['', 'Neue Gruppen: in Spalte G ergänzen (ausgeblendet).'],
-    ['', ''],
-    ['EINGABE:', 'Mannschaftsführer tragen Heim-/Auswärtsspiele ein.'],
-    ['', 'Heimspiel: Bereich auswählen (Pflicht).'],
-    ['', 'Auswärtsspiel: Bereich frei lassen.'],
-    ['', 'Fehler und Warnungen erscheinen in der Status-Spalte.'],
-    ['', ''],
-    ['SPERRUNGEN:', 'Gesperrte Tage/Bereiche/Zeiträume eintragen.'],
-    ['', 'Ohne Start-/Endzeit: ganztägig gesperrt.'],
-    ['', 'Mit Start-/Endzeit: nur dieser Zeitraum gesperrt.'],
-    ['', ''],
-    ['HALLEN/SPIELPLAN:', 'Kalenderansicht für die Web-Veröffentlichung.'],
-    ['', 'Checkbox A1: Nur Hallenbelegung (Heimspiele).'],
-    ['', 'Checkbox A2: Sperrungen/Anderw. Belegungen einblenden.'],
+    ['SLICER-FILTER (Web-Ansicht):', ''],
+    ['1.', 'Hallen/Spielplan-Tab öffnen.'],
+    ['2.', 'Menü Daten → Slicer.'],
+    ['3.', 'Slicer für Team (Spalte E) anlegen.'],
+    ['4.', 'Slicer für H/A (Spalte F) anlegen.'],
+    ['5.', 'Slicer für Typ (Spalte I: leer=Spiel, »gesperrt«=Sperrung).'],
+    ['', 'Slicer funktionieren in der veröffentlichten HTML-Ansicht.'],
     ['', ''],
     ['WEB-VERÖFFENTLICHUNG:', 'Datei → Freigeben → Für das Web veröffentlichen'],
     ['', 'Blatt "Hallen/Spielplan" auswählen.'],
-    ['', 'Checkboxen VOR dem Veröffentlichen nach Wunsch setzen.'],
     ['', ''],
-    ['FREIGABE:', 'Datei → Freigeben → E-Mail der Mannschaftsführer hinzufügen'],
+    ['FREIGABE:', 'Datei → Freigeben → E-Mail der Mannschaftsführer hinzufügen.'],
     ['', 'Berechtigung: "Bearbeiter".'],
-    ['', 'Andere Mitglieder: Link aus Web-Veröffentlichung.'],
   ];
 
   var range = sheet.getRange(2, 10, instructions.length, 2);
@@ -664,45 +645,42 @@ function upgradeHallenSpielplanSheet(ss, sep) {
 
 function initHallenSpielplanSheet(sheet, sep) {
 
-  sheet.getRange('A1:B2').clearContent();
-  sheet.getRange('A1:A2').removeCheckboxes();
+  sheet.deleteRows(1, 2);
 
-  // Überschriften Zeile 3
   var headers = ['Datum', 'Tag', 'Startzeit', 'Bereich', 'Team', 'H/A', 'Gegner', 'Kommentar', 'Status'];
-  sheet.getRange(3, 1, 1, 9)
+  sheet.getRange(1, 1, 1, 9)
     .setValues([headers])
     .setFontWeight('bold')
     .setBackground('#E8E8E8');
 
-  // Bedingte Formatierungen
   var heimRule = SpreadsheetApp.newConditionalFormatRule()
-    .whenFormulaSatisfied('=$F4="Heim"')
+    .whenFormulaSatisfied('=$F2="Heim"')
     .setBackground('#C8E6C9')
-    .setRanges([sheet.getRange('A4:I' + CONFIG.MAX_ROWS)])
+    .setRanges([sheet.getRange('A2:I' + CONFIG.MAX_ROWS)])
     .build();
 
   var auswaertsRule = SpreadsheetApp.newConditionalFormatRule()
-    .whenFormulaSatisfied('=$F4="Auswärts"')
+    .whenFormulaSatisfied('=$F2="Auswärts"')
     .setBackground('#BBDEFB')
-    .setRanges([sheet.getRange('A4:I' + CONFIG.MAX_ROWS)])
+    .setRanges([sheet.getRange('A2:I' + CONFIG.MAX_ROWS)])
     .build();
 
   var fehlerRule = SpreadsheetApp.newConditionalFormatRule()
-    .whenFormulaSatisfied('=REGEXMATCH($I4' + sep + ' "❌")')
+    .whenFormulaSatisfied('=REGEXMATCH($I2' + sep + ' "❌")')
     .setBackground('#FFCDD2')
-    .setRanges([sheet.getRange('A4:I' + CONFIG.MAX_ROWS)])
+    .setRanges([sheet.getRange('A2:I' + CONFIG.MAX_ROWS)])
     .build();
 
   var warnungRule = SpreadsheetApp.newConditionalFormatRule()
-    .whenFormulaSatisfied('=REGEXMATCH($I4' + sep + ' "⚠️")')
+    .whenFormulaSatisfied('=REGEXMATCH($I2' + sep + ' "⚠️")')
     .setBackground('#FFE0B2')
-    .setRanges([sheet.getRange('A4:I' + CONFIG.MAX_ROWS)])
+    .setRanges([sheet.getRange('A2:I' + CONFIG.MAX_ROWS)])
     .build();
 
   var sperrRule = SpreadsheetApp.newConditionalFormatRule()
-    .whenFormulaSatisfied('=REGEXMATCH($I4' + sep + ' "gesperrt")')
+    .whenFormulaSatisfied('=REGEXMATCH($I2' + sep + ' "gesperrt")')
     .setBackground('#E0E0E0')
-    .setRanges([sheet.getRange('A4:I' + CONFIG.MAX_ROWS)])
+    .setRanges([sheet.getRange('A2:I' + CONFIG.MAX_ROWS)])
     .build();
 
   var rules = sheet.getConditionalFormatRules();
@@ -719,8 +697,8 @@ function initHallenSpielplanSheet(sheet, sep) {
   sheet.setColumnWidth(8, 250);
   sheet.setColumnWidth(9, 300);
 
-  sheet.setFrozenRows(3);
-  protectRange(sheet, 'A3:I3');
+  sheet.setFrozenRows(1);
+  protectRange(sheet, 'A1:I1');
 }
 
 function generatePlan() {
@@ -797,17 +775,17 @@ function generatePlan() {
     return ta - tb;
   });
 
-  var maxRow = Math.max(planSheet.getLastRow(), 3);
-  if (maxRow >= 4) {
-    planSheet.getRange(4, 1, maxRow - 3, 9).clearContent();
+  var maxRow = Math.max(planSheet.getLastRow(), 1);
+  if (maxRow >= 2) {
+    planSheet.getRange(2, 1, maxRow - 1, 9).clearContent();
   }
 
   if (rows.length > 0) {
-    planSheet.getRange(4, 1, rows.length, 9).setValues(rows);
-    planSheet.getRange(4, 1, rows.length, 1).setNumberFormat('DD.MM.YYYY');
-    planSheet.getRange(4, 3, rows.length, 1).setNumberFormat('HH:MM');
+    planSheet.getRange(2, 1, rows.length, 9).setValues(rows);
+    planSheet.getRange(2, 1, rows.length, 1).setNumberFormat('DD.MM.YYYY');
+    planSheet.getRange(2, 3, rows.length, 1).setNumberFormat('HH:MM');
   } else {
-    planSheet.getRange(4, 5).setValue('Keine Einträge vorhanden.');
+    planSheet.getRange(2, 5).setValue('Keine Einträge vorhanden.');
   }
 }
 

@@ -7,8 +7,9 @@ Die Arrays ersetzen den Bereich zwischen den Markern:
     // --- SEED DATA END ---
 
 Usage:
-    python3 tools/build.py            # TSV -> JSON einbetten
-    python3 tools/build.py --clean    # Alle SEED-Arrays leeren
+    python3 tools/build.py              # Produktivdaten aus data/
+    python3 tools/build.py --testdata   # Testdaten aus data/test/
+    python3 tools/build.py --clean      # Alle SEED-Arrays leeren
 """
 
 import csv
@@ -19,7 +20,6 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-DATA_DIR = ROOT / "data"
 GS_FILE = ROOT / "hallenspielplan.gs"
 BUILD_FILE = ROOT / "build" / "hallenspielplan.gs"
 
@@ -77,9 +77,13 @@ def main():
         print("  All SEED arrays cleared.")
         return
 
-    setup = read_tsv(DATA_DIR / "setup_teams.tsv")
-    eingabe = read_tsv(DATA_DIR / "eingabe.tsv")
-    sperrungen = read_tsv(DATA_DIR / "sperrungen.tsv")
+    use_testdata = "--testdata" in sys.argv
+    data_dir = ROOT / "data" / "test" if use_testdata else ROOT / "data"
+    label = "TEST" if use_testdata else "PROD"
+
+    setup = read_tsv(data_dir / "setup_teams.tsv")
+    eingabe = read_tsv(data_dir / "eingabe.tsv")
+    sperrungen = read_tsv(data_dir / "sperrungen.tsv")
 
     seed_lines = [
         format_json_array("SEED_SETUP", setup),
@@ -88,9 +92,9 @@ def main():
     ]
 
     write_block("\n".join(seed_lines))
-    print(f"  SEED_SETUP: {len(setup)} rows")
-    print(f"  SEED_EINGABE: {len(eingabe)} rows")
-    print(f"  SEED_SPERRUNGEN: {len(sperrungen)} rows")
+    print(f"  [{label}] SEED_SETUP: {len(setup)} rows")
+    print(f"  [{label}] SEED_EINGABE: {len(eingabe)} rows")
+    print(f"  [{label}] SEED_SPERRUNGEN: {len(sperrungen)} rows")
 
 
 if __name__ == "__main__":

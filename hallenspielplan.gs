@@ -480,7 +480,7 @@ function createSetupSheet(ss, sep) {
 function createSperrungenSheet(ss) {
   var sheet = ss.insertSheet(CONFIG.SHEET_SPERRUNGEN);
 
-  var headers = ['Datum', 'Start/\nzeit', 'Endzeit', 'Bereich', 'Kommentar', '\u26A0\uFE0F Status'];
+  var headers = ['Datum', 'Start\nzeit', 'Endzeit', 'Bereich', 'Kommentar', '\u26A0\uFE0F Status'];
   sheet.getRange(1, 1, 1, 6)
     .setValues([headers])
     .setFontWeight('bold')
@@ -549,7 +549,7 @@ function upgradeSperrungenSheet(ss) {
 function createTeamSheet(ss, teamName, sep) {
   var sheet = ss.insertSheet(teamName);
 
-  var headers = ['Gegner', 'Datum', 'Start/\nzeit', 'späteste Endzeit', 'Heim/\nAuswärts', 'Bereich', '\u26A0\uFE0F Status', 'Kommentar'];
+  var headers = ['Gegner', 'Datum', 'Start\nzeit', 'späteste Endzeit', 'Heim/\nAuswärts', 'Bereich', '\u26A0\uFE0F Status', 'Kommentar'];
   sheet.getRange(1, 1, 1, 8)
     .setValues([headers])
     .setFontWeight('bold')
@@ -632,7 +632,7 @@ function upgradeTeamSheet(sheet, sep) {
   if (sheet.getRange('G1').getValue() !== '\u26A0\uFE0F Status') {
     sheet.getRange(1, 1, 1, 8).clearContent();
     sheet.getRange(1, 1, 1, 8)
-      .setValues([['Gegner', 'Datum', 'Start/\nzeit', 'späteste Endzeit', 'Heim/\nAuswärts', 'Bereich', '\u26A0\uFE0F Status', 'Kommentar']])
+      .setValues([['Gegner', 'Datum', 'Start\nzeit', 'späteste Endzeit', 'Heim/\nAuswärts', 'Bereich', '\u26A0\uFE0F Status', 'Kommentar']])
       .setFontWeight('bold')
       .setBackground('#E8E8E8')
       .setWrap(true);
@@ -676,7 +676,7 @@ function initHallenSpielplanSheet(sheet, sep) {
 
   sheet.deleteRows(1, 2);
 
-  var headers = ['Datum', 'Tag', 'Start/\nzeit', 'Bereich', 'Team', 'Heim/\nAuswärts', 'Gegner', 'Status', 'Kommentar'];
+  var headers = ['Datum', 'Tag', 'Start\nzeit', 'Bereich', 'Team', 'Heim/\nAuswärts', 'Gegner', 'Status', 'Kommentar'];
   sheet.getRange(1, 1, 1, 9)
     .setValues([headers])
     .setFontWeight('bold')

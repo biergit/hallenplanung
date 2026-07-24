@@ -1,0 +1,16 @@
+Team	Gegner	Datum	Startzeit	späteste Endzeit	Heim/Auswärts	Bereich	Kommentar
+Erwachsene	Gegner H/A fehlt	05.09.2026	10:00	12:30		Große Halle links	[Fehler] H/A fehlt
+Erwachsene	Gegner Bereich fehlt	06.09.2026	14:00	16:30	Heim		[Fehler] Bereich fehlt
+Erwachsene	Gegner Montag	14.09.2026	10:00	12:30	Heim	Große Halle links	[Fehler] Montag
+Erwachsene	Gegner Endzeit<Start	12.09.2026	16:00	14:00	Heim	Große Halle links	[Fehler] Endzeit vor Startzeit
+Erwachsene	Gegner Di falsch	15.09.2026	10:00	12:30	Heim	Große Halle links	[Fehler] Di nur Kleine Halle
+Erwachsene	Gegner Mi falsch	16.09.2026	10:00	12:30	Heim	Große Halle rechts	[Fehler] Mi nur Kleine Halle
+Erwachsene	Gegner Doppel 1	13.09.2026	10:00	12:30	Heim	Kleine Halle	[Fehler] Doppelbuchung
+Erwachsene	Gegner Doppel 2	13.09.2026	11:00	13:30	Heim	Kleine Halle	[Fehler] Zeitüberlappung
+Erwachsene	Gegner Datum fehlt				Heim	Große Halle links	[Fehler] Kein Datum
+Erwachsene	Gegner Fr 2 ohne KH 1	18.09.2026	10:00	12:30	Heim	Große Halle links	[Fehler] Fr 2 ohne Kleine Halle
+Erwachsene	Gegner Fr 2 ohne KH 2	18.09.2026	14:00	16:30	Heim	Große Halle rechts	[Fehler] Fr 2 ohne Kleine Halle
+Erwachsene	Gegner Cross-Team	08.09.2026	10:00	12:30	Heim	Kleine Halle	[Fehler] Team-übergreifend
+Erwachsene II	Gegner Cross-Team	08.09.2026	10:00	12:30	Heim	Kleine Halle	[Fehler] Team-übergreifend
+Erwachsene	Test Sperrung Überlapp	01.09.2026	10:00	12:30	Heim	Große Halle links	[Fehler] Überschneidung Sperrung
+Erwachsene	Test Ganztagssperrung	02.09.2026	10:00	12:30	Heim	Große Halle links	[Fehler] Ganztägig gesperrt

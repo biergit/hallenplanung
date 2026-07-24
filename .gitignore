@@ -1,4 +1,4 @@
 *.log
 *.tmp
-data/
+data/*.tsv
 build/

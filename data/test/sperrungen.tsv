@@ -1,0 +1,6 @@
+Datum	Startzeit	Endzeit	Bereich	Kommentar
+01.09.2026	09:00	11:00	Große Halle links	[Fehler] Überschneidung mit 10:00-12:30
+02.09.2026			Alle	[Test] Ganztägig gesperrt
+05.09.2026		16:00	Alle	[Fehler] Endzeit ohne Startzeit
+nix	09:00	12:00	Große Halle links	[Fehler] Ungültiges Datum
+15.09.2026	09:00	11:00	Kleine Halle	[OK] Di Kleine Halle gesperrt

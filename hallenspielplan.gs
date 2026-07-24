@@ -49,7 +49,21 @@ var CONFIG = {
   GAME_DURATION_HOURS: 2.5,
 
   // Maximale Zeilenanzahl für Datenbereiche, Formatierungen und Validierungen
-  MAX_ROWS: 1000
+  MAX_ROWS: 1000,
+
+  // Spaltenbreiten — einmal ändern, überall konsistent
+  CW: {
+    datum: 110,
+    tag: 40,
+    startzeit: 60,
+    bereich: 135,
+    team: 130,
+    ha: 65,
+    gegner: 200,
+    status: 250,
+    kommentar: 300,
+    endzeit: 50
+  }
 };
 // --- SEED DATA BEGIN ---
 var SEED_SETUP = JSON.parse("[]");
@@ -493,11 +507,11 @@ function createSperrungenSheet(ss) {
 
   protectRange(sheet, 'A1:F1');
 
-  sheet.setColumnWidth(1, 110);
-  sheet.setColumnWidth(2, 50);
-  sheet.setColumnWidth(3, 50);
-  sheet.setColumnWidth(4, 150);
-  sheet.setColumnWidth(5, 300);
+  sheet.setColumnWidth(1, CONFIG.CW.datum);
+  sheet.setColumnWidth(2, CONFIG.CW.startzeit);
+  sheet.setColumnWidth(3, CONFIG.CW.endzeit);
+  sheet.setColumnWidth(4, CONFIG.CW.bereich);
+  sheet.setColumnWidth(5, CONFIG.CW.kommentar);
 
   sheet.setFrozenRows(1);
 
@@ -522,11 +536,11 @@ function upgradeSperrungenSheet(ss) {
     }
   }
   sheet.getRange(1, 6).setValue('\u26A0\uFE0F Status').setFontWeight('bold').setBackground('#E8E8E8');
-  sheet.setColumnWidth(1, 110);
-  sheet.setColumnWidth(2, 50);
-  sheet.setColumnWidth(3, 50);
-  sheet.setColumnWidth(4, 150);
-  sheet.setColumnWidth(5, 300);
+  sheet.setColumnWidth(1, CONFIG.CW.datum);
+  sheet.setColumnWidth(2, CONFIG.CW.startzeit);
+  sheet.setColumnWidth(3, CONFIG.CW.endzeit);
+  sheet.setColumnWidth(4, CONFIG.CW.bereich);
+  sheet.setColumnWidth(5, CONFIG.CW.kommentar);
   protectRange(sheet, 'A1:F1');
 }
 
@@ -599,13 +613,13 @@ function createTeamSheet(ss, teamName, sep) {
 
   protectRange(sheet, 'A1:H1');
 
-  sheet.setColumnWidth(1, 200);
-  sheet.setColumnWidth(2, 110);
-  sheet.setColumnWidth(3, 50);
-  sheet.setColumnWidth(5, 65);
-  sheet.setColumnWidth(6, 150);
-  sheet.setColumnWidth(7, 250);
-  sheet.setColumnWidth(8, 300);
+  sheet.setColumnWidth(1, CONFIG.CW.gegner);
+  sheet.setColumnWidth(2, CONFIG.CW.datum);
+  sheet.setColumnWidth(3, CONFIG.CW.startzeit);
+  sheet.setColumnWidth(5, CONFIG.CW.ha);
+  sheet.setColumnWidth(6, CONFIG.CW.bereich);
+  sheet.setColumnWidth(7, CONFIG.CW.status);
+  sheet.setColumnWidth(8, CONFIG.CW.kommentar);
 
   sheet.setFrozenRows(1);
 }
@@ -624,13 +638,13 @@ function upgradeTeamSheet(sheet, sep) {
       .setWrap(true);
   }
 
-  sheet.setColumnWidth(1, 200);
-  sheet.setColumnWidth(2, 110);
-  sheet.setColumnWidth(3, 50);
-  sheet.setColumnWidth(5, 65);
-  sheet.setColumnWidth(6, 150);
-  sheet.setColumnWidth(7, 250);
-  sheet.setColumnWidth(8, 300);
+  sheet.setColumnWidth(1, CONFIG.CW.gegner);
+  sheet.setColumnWidth(2, CONFIG.CW.datum);
+  sheet.setColumnWidth(3, CONFIG.CW.startzeit);
+  sheet.setColumnWidth(5, CONFIG.CW.ha);
+  sheet.setColumnWidth(6, CONFIG.CW.bereich);
+  sheet.setColumnWidth(7, CONFIG.CW.status);
+  sheet.setColumnWidth(8, CONFIG.CW.kommentar);
 
   protectRange(sheet, 'A1:H1');
 }
@@ -703,15 +717,15 @@ function initHallenSpielplanSheet(sheet, sep) {
   rules.push(heimRule, auswaertsRule, fehlerRule, warnungRule, sperrRule);
   sheet.setConditionalFormatRules(rules);
 
-  sheet.setColumnWidth(1, 110);
-  sheet.setColumnWidth(2, 40);
-  sheet.setColumnWidth(3, 60);
-  sheet.setColumnWidth(4, 135);
-  sheet.setColumnWidth(5, 130);
-  sheet.setColumnWidth(6, 65);
-  sheet.setColumnWidth(7, 200);
-  sheet.setColumnWidth(8, 250);
-  sheet.setColumnWidth(9, 300);
+  sheet.setColumnWidth(1, CONFIG.CW.datum);
+  sheet.setColumnWidth(2, CONFIG.CW.tag);
+  sheet.setColumnWidth(3, CONFIG.CW.startzeit);
+  sheet.setColumnWidth(4, CONFIG.CW.bereich);
+  sheet.setColumnWidth(5, CONFIG.CW.team);
+  sheet.setColumnWidth(6, CONFIG.CW.ha);
+  sheet.setColumnWidth(7, CONFIG.CW.gegner);
+  sheet.setColumnWidth(8, CONFIG.CW.status);
+  sheet.setColumnWidth(9, CONFIG.CW.kommentar);
 
   sheet.setFrozenRows(1);
   protectRange(sheet, 'A1:I1');
@@ -942,6 +956,8 @@ function validateAllEntries() {
     var endzeit = row[4];
     var ha = row[5];
     var bereich = row[6];
+
+    if (!row[1] && !datum && !startzeit && !endzeit && !ha && !bereich && !row[7]) continue;
 
     if (!team) {
       statusMessages[i].push('❌ Team fehlt');

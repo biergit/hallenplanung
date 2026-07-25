@@ -722,7 +722,8 @@ function initHallenSpielplanSheet(sheet, sep) {
   createFilterViews(sheet);
 
   var filterHints = [
-    ['FILTERANSICHTEN:', 'Über Daten → Filteransichten können verschiedene Ansichten ausgewählt werden:'],
+    ['FILTERANSICHTEN:', 'Daten → Ansicht ändern → Filteransicht auswählen.'],
+    ['', 'Die Auswahl gilt nur für den aktuellen Benutzer.'],
     ['', 'Pro Team: Zeigt nur die Spiele des jeweiligen Teams.'],
     ['', 'Hallenbelegung: Zeigt alle Heimspiele und Sperrungen (keine Auswärtsspiele).']
   ];
@@ -731,6 +732,7 @@ function initHallenSpielplanSheet(sheet, sep) {
   fhRange.setFontSize(10);
   sheet.getRange(2, 10).setFontWeight('bold');
   sheet.getRange(2, 11, filterHints.length, 1).setWrap(true);
+  sheet.autoResizeColumn(10);
   sheet.setColumnWidth(11, 420);
 }
 

@@ -1027,9 +1027,9 @@ function validateAllEntries() {
         if (isValidTime(sStart) && isValidTime(sEnd)) {
           if (isValidTime(startzeit) && isValidTime(endzeit)) {
             var bs = timeToFraction(startzeit), be = timeToFraction(endzeit);
-            var ss = timeToFraction(sStart), se = timeToFraction(sEnd);
-            if (bs !== null && be !== null && ss !== null && se !== null) {
-              if (bs < se && be > ss) {
+            var sS = timeToFraction(sStart), se = timeToFraction(sEnd);
+            if (bs !== null && be !== null && sS !== null && se !== null) {
+              if (bs < se && be > sS) {
                 var msg = '❌ Überschneidung mit Sperrung';
                 if (sperrungen[s].kommentar) msg += ': ' + sperrungen[s].kommentar;
                 statusMessages[i].push(msg);
@@ -1039,9 +1039,9 @@ function validateAllEntries() {
         } else if (isValidTime(sStart)) {
           if (isValidTime(startzeit) && isValidTime(endzeit)) {
             var bs = timeToFraction(startzeit), be = timeToFraction(endzeit);
-            var ss = timeToFraction(sStart), se = 1;
-            if (bs !== null && be !== null && ss !== null) {
-              if (bs < se && be > ss) {
+            var sS = timeToFraction(sStart), se = 1;
+            if (bs !== null && be !== null && sS !== null) {
+              if (bs < se && be > sS) {
                 var msg = '❌ Überschneidung mit Sperrung (ab ' + formatTime(sStart) + ')';
                 if (sperrungen[s].kommentar) msg += ': ' + sperrungen[s].kommentar;
                 statusMessages[i].push(msg);

@@ -673,7 +673,8 @@ function upgradeHallenSpielplanSheet(ss, sep) {
 
 function initHallenSpielplanSheet(sheet, sep) {
 
-  sheet.deleteRows(1, 2);
+  sheet.getRange('A1:B2').clearContent();
+  sheet.getRange('A1:A2').removeCheckboxes();
 
   var headers = ['Datum', 'Tag', 'Start\nzeit', 'Bereich', 'Team', 'Heim/\nAuswärts', 'Gegner', 'Status', 'Kommentar'];
   sheet.getRange(1, 1, 1, 9)

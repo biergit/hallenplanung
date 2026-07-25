@@ -53,12 +53,12 @@ var CONFIG = {
 
   // Spaltenbreiten — einmal ändern, überall konsistent
   CW: {
-    datum: 110,
+    datum: 90,
     tag: 40,
     startzeit: 60,
     bereich: 135,
     team: 130,
-    ha: 65,
+    ha: 67,
     gegner: 200,
     status: 250,
     kommentar: 300,

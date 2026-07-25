@@ -25,15 +25,17 @@ Google Apps Script für die Hallen/Spielplanung eines Tischtennisvereins.
 - Sperrungen mit optionaler Start-/Endzeit (zeitbasierte oder ganztägige Sperrung)
 - Konfigurierbare Standard-Spieldauer (in Setup-Blatt)
 - Kalender-Datepicker für Datumseingabe
+- Filteransichten auf dem Hallen/Spielplan-Blatt (pro Team und Hallenbelegung)
 
 ## Installation
 
 1. Google Sheet erstellen (Tabellenkalkulation)
 2. **Erweiterungen → Apps Script**
 3. Code aus **`build/hallenspielplan.gs`** vollständig einfügen
-4. Funktion **`resetAll`** auswählen und ausführen (▶️)
-5. Berechtigungen erteilen
-6. Zurück zum Sheet – alle Blätter sind eingerichtet
+4. Im Apps Script-Editor links auf **Dienste (+)** → **Google Sheets API** hinzufügen
+5. Funktion **`resetAll`** auswählen und ausführen (▶️)
+6. Berechtigungen erteilen
+7. Zurück zum Sheet – alle Blätter sind eingerichtet
 
 `resetAll()` löscht alle bestehenden Blätter (außer Hallen/Spielplan) und
 legt sie inkl. Seed-Daten neu an. Für nicht-destruktive Struktur-Updates

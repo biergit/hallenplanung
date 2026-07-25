@@ -718,6 +718,95 @@ function initHallenSpielplanSheet(sheet, sep) {
   sheet.getRange('I2:I').setWrap(true);
   sheet.setFrozenRows(1);
   protectRange(sheet, 'A1:I1');
+
+  createFilterViews(sheet);
+
+  var filterHints = [
+    ['FILTERANSICHTEN:', 'Über Daten → Filteransichten können verschiedene Ansichten ausgewählt werden:'],
+    ['', 'Pro Team: Zeigt nur die Spiele des jeweiligen Teams.'],
+    ['', 'Hallenbelegung: Zeigt alle Heimspiele und Sperrungen (keine Auswärtsspiele).']
+  ];
+  var fhRange = sheet.getRange(2, 10, filterHints.length, 2);
+  fhRange.setValues(filterHints);
+  fhRange.setFontSize(10);
+  sheet.getRange(2, 10).setFontWeight('bold');
+  sheet.getRange(2, 11, filterHints.length, 1).setWrap(true);
+  sheet.setColumnWidth(11, 420);
+}
+
+function createFilterViews(sheet) {
+  try {
+    var ss = sheet.getParent();
+    var sheetId = sheet.getSheetId();
+    var spreadsheetId = ss.getId();
+    var teamNames = readTeamNames(ss);
+    var maxRows = CONFIG.MAX_ROWS;
+
+    var spreadsheet = Sheets.Spreadsheets.get(spreadsheetId, { ranges: [sheet.getSheetName()] });
+    var existingSheet = spreadsheet.sheets[0];
+    var requests = [];
+
+    if (existingSheet.filterViews) {
+      existingSheet.filterViews.forEach(function(fv) {
+        requests.push({
+          deleteFilterView: { filterId: fv.filterViewId }
+        });
+      });
+    }
+
+    for (var i = 0; i < teamNames.length; i++) {
+      requests.push({
+        addFilterView: {
+          filter: {
+            title: teamNames[i],
+            range: {
+              sheetId: sheetId,
+              startRowIndex: 0,
+              endRowIndex: maxRows,
+              startColumnIndex: 0,
+              endColumnIndex: 9
+            },
+            filterSpecs: [{
+              columnIndex: 4,
+              filterCriteria: {
+                condition: {
+                  type: 'TEXT_EQ',
+                  values: [{ userEnteredValue: teamNames[i] }]
+                }
+              }
+            }]
+          }
+        }
+      });
+    }
+
+    requests.push({
+      addFilterView: {
+        filter: {
+          title: 'Hallenbelegung',
+          range: {
+            sheetId: sheetId,
+            startRowIndex: 0,
+            endRowIndex: maxRows,
+            startColumnIndex: 0,
+            endColumnIndex: 9
+          },
+          filterSpecs: [{
+            columnIndex: 5,
+            filterCriteria: {
+              hiddenValues: ['Auswärts']
+            }
+          }]
+        }
+      }
+    });
+
+    if (requests.length > 0) {
+      Sheets.Spreadsheets.batchUpdate({ requests: requests }, spreadsheetId);
+    }
+  } catch (e) {
+    Logger.log('Filteransichten konnten nicht erstellt werden: ' + e.toString());
+  }
 }
 
 function generatePlan() {

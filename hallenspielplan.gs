@@ -1192,6 +1192,7 @@ function validateAllEntries() {
       s.getRange(2, 7, vals.length, 1).setValues(vals);
     }
   }
+  generatePlan();
 }
 
 function validateSperrungen() {

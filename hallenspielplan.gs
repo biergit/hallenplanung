@@ -502,6 +502,8 @@ function createSperrungenSheet(ss) {
   sheet.setColumnWidth(4, CONFIG.CW.bereich);
   sheet.setColumnWidth(5, CONFIG.CW.kommentar);
 
+  sheet.getRange('F2:F').setWrap(true);
+  sheet.getRange('E2:E').setWrap(true);
   sheet.setFrozenRows(1);
 
   sheet.getRange(1, 5).setNote(
@@ -530,6 +532,8 @@ function upgradeSperrungenSheet(ss) {
   sheet.setColumnWidth(3, CONFIG.CW.endzeit);
   sheet.setColumnWidth(4, CONFIG.CW.bereich);
   sheet.setColumnWidth(5, CONFIG.CW.kommentar);
+  sheet.getRange('F2:F').setWrap(true);
+  sheet.getRange('E2:E').setWrap(true);
   protectRange(sheet, 'A1:F1');
 }
 
@@ -611,6 +615,8 @@ function createTeamSheet(ss, teamName, sep) {
   sheet.setColumnWidth(8, CONFIG.CW.kommentar);
 
   sheet.setFrozenRows(1);
+  sheet.getRange('G2:G').setWrap(true);
+  sheet.getRange('H2:H').setWrap(true);
 }
 
 function upgradeTeamSheet(sheet, sep) {
@@ -635,6 +641,8 @@ function upgradeTeamSheet(sheet, sep) {
   sheet.setColumnWidth(7, CONFIG.CW.status);
   sheet.setColumnWidth(8, CONFIG.CW.kommentar);
 
+  sheet.getRange('G2:G').setWrap(true);
+  sheet.getRange('H2:H').setWrap(true);
   protectRange(sheet, 'A1:H1');
 }
 
@@ -716,6 +724,8 @@ function initHallenSpielplanSheet(sheet, sep) {
   sheet.setColumnWidth(8, CONFIG.CW.status);
   sheet.setColumnWidth(9, CONFIG.CW.kommentar);
 
+  sheet.getRange('H2:H').setWrap(true);
+  sheet.getRange('I2:I').setWrap(true);
   sheet.setFrozenRows(1);
   protectRange(sheet, 'A1:I1');
 }

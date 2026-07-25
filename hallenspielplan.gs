@@ -433,19 +433,6 @@ function createSetupSheet(ss, sep) {
   sheet.hideColumns(7);
 
   var instructions = [
-    ['SLICER-FILTER (Web-Ansicht):', ''],
-    ['1.', 'Hallen/Spielplan-Tab öffnen.'],
-    ['2.', 'Menü Daten → Slicer.'],
-    ['3.', 'Slicer für Team (Spalte E) anlegen.'],
-    ['4.', 'Slicer für Heim/Auswärts (Spalte F) anlegen.'],
-    ['5.', 'Slicer für Typ (Spalte H: leer=Spiel, »gesperrt«=Sperrung).'],
-    ['6.', 'Datenbereich auf A2:I1000 setzen (nicht Auto!),'],
-    ['', '  damit neue Zeilen automatisch erfasst werden.'],
-    ['', 'Slicer per Drag&Drop rechts neben die Tabelle platzieren.'],
-    ['', ''],
-    ['WEB-VERÖFFENTLICHUNG:', 'Datei → Freigeben → Für das Web veröffentlichen'],
-    ['', 'Blatt "Hallen/Spielplan" auswählen.'],
-    ['', ''],
     ['FREIGABE:', 'Datei → Freigeben → E-Mail der Mannschaftsführer hinzufügen.'],
     ['', 'Berechtigung: "Bearbeiter".'],
   ];

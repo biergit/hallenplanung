@@ -8,7 +8,7 @@ Google Apps Script für die Hallen/Spielplanung eines Tischtennisvereins.
 |-------|-------|
 | *Team-Blätter* | Ein Blatt pro Team – Mannschaftsführer tragen hier ihre Spiele ein |
 | Sperrungen/Anderweitige Belegungen | Gesperrte Tage, Bereiche und Zeiträume |
-| Hallen/Spielplan | Öffentliche Kalenderansicht (für Web-Veröffentlichung) |
+| Hallen/Spielplan | Kalenderansicht |
 | Setup | Team-Konfiguration (Rang, Gruppe, Name) und Einstellungen |
 
 ## Funktionen
@@ -26,22 +26,6 @@ Google Apps Script für die Hallen/Spielplanung eines Tischtennisvereins.
 - Konfigurierbare Standard-Spieldauer (in Setup-Blatt)
 - Kalender-Datepicker für Datumseingabe
 
-## Hallen/Spielplan – Filterung
-
-Im veröffentlichten Web-View sind keine Script-Trigger aktiv. Für interaktive Filterung:
-1. `Hallen/Spielplan`-Tab im Google Sheet öffnen
-2. **Daten → Slicer** → je einen Slicer anlegen für:
-   - **Team** (Spalte E)
-   - **Heim/Auswärts** (Spalte F: Heim / Auswärts)
-   - **Typ** (Spalte H: `gesperrt` oder leer für Spieleinträge)
-3. **Wichtig beim Anlegen:** Unter „Datenbereich" nicht den automatisch
-   erkannten Bereich nehmen, sondern manuell `A2:I1000` eintragen.
-   Nur so werden später hinzugefügte Zeilen automatisch miterfasst.
-4. Slicer per Drag & Drop **rechts neben die Tabelle** platzieren
-   (ab Spalte J) — sie überlappen dann keine Daten.
-5. Slicer sind auch in der veröffentlichten HTML-Ansicht interaktiv
-   bedienbar.
-
 ## Installation
 
 1. Google Sheet erstellen (Tabellenkalkulation)
@@ -54,15 +38,6 @@ Im veröffentlichten Web-View sind keine Script-Trigger aktiv. Für interaktive 
 `resetAll()` löscht alle bestehenden Blätter (außer Hallen/Spielplan) und
 legt sie inkl. Seed-Daten neu an. Für nicht-destruktive Struktur-Updates
 (ohne Datenverlust) gibt es `setupSheet()`.
-
-## Web-Veröffentlichung
-
-- **Datei → Für das Web veröffentlichen**
-- Blatt "Hallen/Spielplan" auswählen
-- Link teilen
-- **Achtung:** Der Link enthält die Tab-ID (GID) des Plan-Blatts. Solange
-  dieser Tab nicht gelöscht wird, bleibt die URL stabil — auch über
-  `resetAll()` und `setupSheet()` hinweg.
 
 ## Freigabe an Mannschaftsführer
 

@@ -34,7 +34,13 @@ Im veröffentlichten Web-View sind keine Script-Trigger aktiv. Für interaktive 
    - **Team** (Spalte E)
    - **Heim/Auswärts** (Spalte F: Heim / Auswärts)
    - **Typ** (Spalte H: `gesperrt` oder leer für Spieleinträge)
-3. Slicer funktionieren auch in der veröffentlichten HTML-Ansicht
+3. **Wichtig beim Anlegen:** Unter „Datenbereich" nicht den automatisch
+   erkannten Bereich nehmen, sondern manuell `A2:I1000` eintragen.
+   Nur so werden später hinzugefügte Zeilen automatisch miterfasst.
+4. Slicer per Drag & Drop **rechts neben die Tabelle** platzieren
+   (ab Spalte J) — sie überlappen dann keine Daten.
+5. Slicer sind auch in der veröffentlichten HTML-Ansicht interaktiv
+   bedienbar.
 
 ## Installation
 

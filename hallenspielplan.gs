@@ -1033,14 +1033,10 @@ function validateAllEntries() {
     var ha = row[5];
     var bereich = row[6];
 
-    if (!row[1] && !datum && !startzeit && !endzeit && !ha && !bereich && !row[7]) continue;
+    if (!isValidDate(datum)) continue;
 
     if (!team) {
       statusMessages[i].push('❌ Team fehlt');
-    }
-    if (!isValidDate(datum)) {
-      statusMessages[i].push('❌ Datum fehlt');
-      continue;
     }
     if (ha !== 'Heim' && ha !== 'Auswärts') {
       statusMessages[i].push('❌ Heim/Auswärts fehlt');
@@ -1089,7 +1085,7 @@ function validateAllEntries() {
                 hasOverlap = true;
                 break;
               }
-            } else {
+            } else if (s1 === null || e1 === null) {
               if (!hasOverlap) {
                 statusMessages[i].push('❌ "' + bereich + '" bereits belegt (Startzeit fehlt)');
                 hasOverlap = true;

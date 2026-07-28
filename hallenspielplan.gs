@@ -1072,6 +1072,9 @@ function validateAllEntries() {
       var key = dateKey + '|' + bereich;
       var sameSlot = bookingsByDateAndArea[key] || [];
       var others = sameSlot.filter(function(j) { return j !== i; });
+      others = others.filter(function(j) {
+        return !(data[i][0] === data[j][1] && data[j][0] === data[i][1]);
+      });
       if (others.length > 0) {
         if (weekday === 6 || weekday === 0) {
           var s1 = timeToFraction(startzeit), e1 = timeToFraction(endzeit);
@@ -1254,6 +1257,9 @@ function checkAdjacentTeams(data, teams) {
           if (Math.abs(gEntries[a].rang - gEntries[b].rang) === 1) {
             var idxA = gEntries[a].index;
             var idxB = gEntries[b].index;
+            var nameA = gEntries[a].name;
+            var nameB = gEntries[b].name;
+            if (data[idxA][1] === nameB && data[idxB][1] === nameA) continue;
             if (!messages[idxA]) messages[idxA] = [];
             if (!messages[idxB]) messages[idxB] = [];
             var msgA = '⚠️ Am selben Tag spielt: ' + gEntries[b].name;

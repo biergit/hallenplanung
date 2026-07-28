@@ -1,5 +1,90 @@
 # Verbesserungsplan
 
+## Naechste Schritte (Top-Prioritaet)
+
+Die folgenden Punkte werden vor allen anderen umgesetzt, da sie die Grundlage fuer alle weiteren Verbesserungen legen.
+
+### Alternativname fuer vereinsinterne Matches
+
+Bei vereinsinternen Begegnungen verwenden Teammitglieder im Gegner-Feld oft Kurznamen (z.B. "E II") statt der offiziellen Teamnamen aus dem Setup. Die kuerzlich eingebauten Validierungs-Ausnahmen (Doppelbuchung bei Gegnern, Nachbarschaftswarnung) greifen dann nicht, weil der Gegner-String nicht mit dem Teamnamen uebereinstimmt.
+
+Die Setup-Spalte D ("Kurzname") ist bisher ungenutzt. Sie wird in `Alternativname` umbenannt und in die Validierung einbezogen.
+
+Ziel:
+
+- Spaltenueberschrift "Kurzname" in "Alternativname" aendern (Setup-Sheet `createSetupSheet()`, TSV-Export).
+- `readTeams()` um das Feld `alternativName` (Spalte D) erweitern.
+- In `validateAllEntries()` und `checkAdjacentTeams()` den Gegner-Abgleich (`data[i][0] === data[j][1]`) erweitern auf: Teamname ODER Alternativname des Gegners.
+- Alternativnamen koennen manuell vergeben oder per Sheet-Formel abgeleitet werden.
+
+Aufwand: ca. 15 Zeilen, kein Risiko.
+
+### TypeScript-Migration und Clasp-Deployment
+
+Der Code wird von einer monolithischen `.gs`-Datei auf mehrere TypeScript-Module umgestellt, angelehnt an die Architektur des `einsatzplaner`-Projekts. Build und Deployment erfolgen ueber `tsc` + `clasp push` statt manuellem Copy-Paste in den Apps-Script-Editor.
+
+Dadurch werden mehrere PLAN-Punkte gleichzeitig adressiert:
+
+- **Zentrales Schema**: Spalten-Enums in `ConfigTypes.ts` (Prioritaet 3)
+- **Testbare Kernlogik**: Reine Funktionen extrahiert, vitest-Tests mit TSV-Fixtures (Prioritaet 3)
+- **Seed-Daten-Abgrenzung**: `build.py` schreibt `dist/Config.js` -- separate `data/` und `test-data/` (Prioritaet 3)
+
+#### Dateistruktur
+
+```
+src/
+├── ConfigTypes.ts       # Enums (COL_SETUP, COL_TEAM, COL_SPERRUNGEN, COL_PLAN),
+│                          Interfaces (TeamEntry, Sperrung, TeamInfo), Weekday-Typen
+├── Config.ts            # CONFIG-Objekt, SEED-Daten (von build.py ueberschrieben)
+├── Utils.ts             # isValidDate, isValidTime, timeToFraction, datumToKey,
+│                          formatTime, protectRange, createTrigger
+├── DataReader.ts        # readTeamNames, readTeams, readSperrungen
+├── Validation.ts        # handleEdit, validateAllEntries, validateSperrungen,
+│                          checkAdjacentTeams, computeEndzeit
+├── SheetBuilder.ts      # setupSheet, createTeamSheet, createSperrungenSheet,
+│                          createPlanSheet, seedSheets, resetAll
+├── PlanGenerator.ts     # generatePlan
+├── DataExporter.ts      # downloadTSV
+└── Main.ts              # onOpen, repairValidations, Menue-Handler
+
+test/
+├── validation.test.ts   # Reine Logik-Tests: Konfliktpruefung, Datum/Zeit-Helfer,
+│                          Nachbarschaftscheck mit vitest + TSV-Fixtures
+└── build.test.ts        # Prueft tsc-Output und Config.js-Inhalt
+```
+
+#### Build-Pipeline
+
+```
+src/*.ts            ──tsc──►  dist/*.js           ──clasp push──►  GAS
+build.py + data/   ───────►  dist/Config.js
+build.py + test-data/ ────►  dist/Config.js (Test-Daten)
+```
+
+- `tsconfig.json`: Target ES2019, module None, strict, `@types/google-apps-script`
+- `tsconfig.test.json`: Target ES2022, module ESNext, bundler-Resolution (fuer vitest)
+- `/// <reference path>` Direktiven statt ES-Imports (GAS kennt kein Modulsystem)
+- `appsscript.json` mit Dateireihenfolge im `dist/`-Ordner
+
+#### Clasp und Umgebungen
+
+- `.clasp.json.prod` / `.clasp.json.test`: gitignored, per npm-Scripts wechselbar
+- `npm run deploy` / `npm run deploy:test`: switch + build + push
+- `.claspignore`: Kontrolliert, welche `dist/`-Dateien deployed werden
+
+#### package.json
+
+- `@google/clasp`, `typescript`, `@types/google-apps-script`, `vitest`
+- Scripts: `build`, `build:test`, `watch`, `deploy`, `deploy:test`, `test`, `test:watch`, `switch:prod`, `switch:test`
+
+#### Besonderheiten
+
+- Reihenfolge der Dateien in `appsscript.json` entspricht den Abhaengigkeiten (ConfigTypes -> Config -> Utils -> DataReader -> Validation -> SheetBuilder -> PlanGenerator -> DataExporter -> Main).
+- GAS-spezifische APIs (`SpreadsheetApp`, `getRange`, etc.) sind in Unit-Tests nicht verfuegbar und werden gemockt.
+- Der Alternativname-Punkt (s.o.) wird noch vor der Migration auf main umgesetzt, damit er in der Migration bereits als TypeScript-Code vorliegt.
+
+Aufwand: ca. 1-2 Tage, separater Branch `migration/typescript`.
+
 ## Prioritaet 1: Stabilitaet und Datenintegritaet
 
 ### Hallen/Spielplan skriptbasiert erzeugen
@@ -127,9 +212,11 @@ Ziel:
 
 ## Empfohlene Umsetzungsreihenfolge
 
-1. Planerzeugung von der Formel in Apps Script verlagern.
-2. Trigger-Verwaltung und Bereichsschutz korrigieren.
-3. Validierung auf echte Daten beschraenken und gesammelt schreiben.
-4. Pflichtfeld- und Zeitvalidierung vervollstaendigen.
-5. Spaltenschema und versionierte Migrationen einfuehren.
-6. Tests, TSV-Haertung und Dokumentation ergaenzen.
+1. **Alternativname** fuer vereinsinterne Matches umsetzen.
+2. **TypeScript-Migration** auf Branch `migration/typescript` durchfuehren.
+3. Planerzeugung von der Formel in Apps Script verlagern.
+4. Trigger-Verwaltung und Bereichsschutz korrigieren.
+5. Validierung auf echte Daten beschraenken und gesammelt schreiben.
+6. Pflichtfeld- und Zeitvalidierung vervollstaendigen.
+7. Spaltenschema und versionierte Migrationen einfuehren.
+8. Tests, TSV-Haertung und Dokumentation ergaenzen.
